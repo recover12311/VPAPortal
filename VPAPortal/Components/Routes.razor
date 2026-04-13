@@ -1,11 +1,15 @@
-﻿@using VPAPortal.Components.Account.Shared
-<Router AppAssembly="typeof(Program).Assembly">
+﻿<Router AppAssembly="typeof(App).Assembly">
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
             <NotAuthorized>
-                <RedirectToLogin />
+                @{
+                    var returnUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+                    NavigationManager.NavigateTo($"Account/Login?ReturnUrl=/{Uri.EscapeDataString(returnUrl)}", forceLoad: true);
+                }
             </NotAuthorized>
         </AuthorizeRouteView>
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
 </Router>
+
+@inject NavigationManager NavigationManager

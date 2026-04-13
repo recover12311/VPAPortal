@@ -1,0 +1,554 @@
+﻿@page "/flights"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using VPAPortal.Data
+@using VPAPortal.Data.Models
+@attribute [Authorize]
+@inject ApplicationDbContext Db
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Вильоти</PageTitle>
+
+<h3 class="mb-4">Вильоти</h3>
+
+@if (crews == null)
+{
+    <p>Завантаження...</p>
+}
+else
+{
+    <ul class="nav nav-tabs mb-4">
+        @foreach (var crew in crews)
+        {
+            var crewId = crew.Id;
+            <li class="nav-item">
+                <button class="nav-link @(selectedCrewId == crewId ? "active" : "")"
+                        @onclick="() => SelectCrew(crewId)">
+                    @crew.Name
+                </button>
+            </li>
+        }
+    </ul>
+
+    @if (selectedCrew != null)
+    {
+        @* ===== ВИБІР ДАТИ ===== *@
+        <div class="d-flex align-items-center gap-3 mb-4 p-3 bg-light rounded">
+            <label class="fw-bold mb-0">📅 Дата:</label>
+            <input type="date" class="form-control" style="width:180px;"
+                   @bind="selectedDate" @bind:after="LoadFlights" />
+            <span class="text-muted small">
+                Показано вильоти за @selectedDate.ToString("dd.MM.yyyy")
+            </span>
+        </div>
+
+        @* ===== ФОРМА ДОДАВАННЯ — тільки Admin/SuperAdmin ===== *@
+        <AuthorizeView Roles="SuperAdmin,Admin">
+            <Authorized>
+                <div class="card mb-4">
+                    <div class="card-header fw-bold">➕ Додати виліт</div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-2">
+                                <label class="form-label">Час</label>
+                                <input type="time" class="form-control" @bind="newTime" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Координати</label>
+                                <div class="input-group">
+                                    <input class="form-control" style="max-width:80px;" @bind="newCoordPrefix" />
+                                    <input class="form-control" @bind="newCoordNumbers" placeholder="11111 11111" />
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Безпілотник</label>
+                                <select class="form-select" @bind="newDroneItemId">
+                                    <option value="0">— оберіть —</option>
+                                    @foreach (var d in availableDrones)
+                                    {
+                                        <option value="@d.Id">@d.Name (@d.Quantity)</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Боєкомплект</label>
+                                <select class="form-select" @bind="newAmmoItemId">
+                                    <option value="0">— оберіть —</option>
+                                    @foreach (var a in availableAmmos)
+                                    {
+                                        <option value="@a.Id">@a.Name (@a.Quantity)</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Результат</label>
+                                <select class="form-select" @bind="newResult">
+                                    <option value="@FlightResult.Уражено">Уражено</option>
+                                    <option value="@FlightResult.Знищено">Знищено</option>
+                                    <option value="@FlightResult.НеУражено">Не уражено</option>
+                                    <option value="@FlightResult.ВідпрацьованоВРайонЦілі">Відпрацьовано в район цілі</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Населений пункт</label>
+                                <input class="form-control" @bind="newSettlement" placeholder="Назва н.п." />
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(addFlightMessage))
+                        {
+                            <div class="alert @(addFlightSuccess ? "alert-success" : "alert-danger") mt-3">
+                                @addFlightMessage
+                            </div>
+                        }
+
+                        <button class="btn btn-primary mt-3" @onclick="AddFlight">
+                            ✈ Додати виліт
+                        </button>
+                    </div>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        @* ===== МОДАЛКА РЕДАГУВАННЯ ===== *@
+        @if (showEditModal)
+        {
+            <div class="modal d-block" style="background:rgba(0,0,0,0.5);">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">✏️ Редагувати виліт</h5>
+                            <button class="btn-close" @onclick="CloseEditModal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label">Час</label>
+                                    <input type="time" class="form-control" @bind="editTime" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Координати</label>
+                                    <div class="input-group">
+                                        <input class="form-control" style="max-width:80px;" @bind="editCoordPrefix" />
+                                        <input class="form-control" @bind="editCoordNumbers" placeholder="11111 11111" />
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Результат</label>
+                                    <select class="form-select" @bind="editResult">
+                                        <option value="@FlightResult.Уражено">Уражено</option>
+                                        <option value="@FlightResult.Знищено">Знищено</option>
+                                        <option value="@FlightResult.НеУражено">Не уражено</option>
+                                        <option value="@FlightResult.ВідпрацьованоВРайонЦілі">Відпрацьовано в район цілі</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Населений пункт</label>
+                                    <input class="form-control" @bind="editSettlement" />
+                                </div>
+                            </div>
+                            @if (!string.IsNullOrEmpty(editFlightMessage))
+                            {
+                                <div class="alert @(editFlightSuccess ? "alert-success" : "alert-danger") mt-3">
+                                    @editFlightMessage
+                                </div>
+                            }
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" @onclick="CloseEditModal">Скасувати</button>
+                            <button class="btn btn-primary" @onclick="SaveEditFlight">Зберегти</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* ===== ФІЛЬТРИ ===== *@
+        <div class="d-flex flex-wrap gap-2 mb-3 align-items-end">
+            <div>
+                <label class="form-label mb-1 small">Результат</label>
+                <select class="form-select form-select-sm" style="width:200px;"
+                        @bind="filterResult" @bind:after="ApplyFilter">
+                    <option value="">— всі —</option>
+                    <option value="Уражено">Уражено</option>
+                    <option value="Знищено">Знищено</option>
+                    <option value="НеУражено">Не уражено</option>
+                    <option value="ВідпрацьованоВРайонЦілі">Відпрацьовано в район цілі</option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label mb-1 small">Н.П.</label>
+                <input class="form-control form-control-sm" style="width:160px;"
+                       @bind="filterSettlement" @bind:after="ApplyFilter" placeholder="Пошук..." />
+            </div>
+            <div>
+                <label class="form-label mb-1 small">Безпілотник</label>
+                <select class="form-select form-select-sm" style="width:180px;"
+                        @bind="filterDroneName" @bind:after="ApplyFilter">
+                    <option value="">— всі —</option>
+                    @foreach (var name in allDroneNames)
+                    {
+                        <option value="@name">@name</option>
+                    }
+                </select>
+            </div>
+            <button class="btn btn-sm btn-outline-secondary" @onclick="ResetFilter">✕ Скинути</button>
+        </div>
+
+        @* ===== ТАБЛИЦЯ ===== *@
+        @if (!filteredFlights.Any())
+        {
+            <p class="text-muted">Вильотів за цю дату немає.</p>
+        }
+        else
+        {
+            <table class="table table-bordered table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>#</th>
+                        <th>Час</th>
+                        <th>Координати</th>
+                        <th>Безпілотник</th>
+                        <th>Боєкомплект</th>
+                        <th>Результат</th>
+                        <th>Н.П.</th>
+                        <th>Додав</th>
+                        <AuthorizeView Roles="SuperAdmin,Admin">
+                            <Authorized>
+                                <th style="width:100px;">Дії</th>
+                            </Authorized>
+                        </AuthorizeView>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in pagedFlights.Select((f, i) => new { Flight = f, Index = i }))
+                    {
+                        var flightId = item.Flight.Id;
+                        var rowNum = (currentPage - 1) * pageSize + item.Index + 1;
+                        <tr>
+                            <td>@rowNum</td>
+                            <td>@item.Flight.Time.ToString("HH:mm")</td>
+                            <td>@item.Flight.Coordinates</td>
+                            <td>@item.Flight.DroneItem?.Name</td>
+                            <td>@item.Flight.AmmoItem?.Name</td>
+                            <td>
+                                <span class="badge @GetResultBadge(item.Flight.Result)">
+                                    @GetResultLabel(item.Flight.Result)
+                                </span>
+                            </td>
+                            <td>@item.Flight.Settlement</td>
+                            <td class="text-muted small">@item.Flight.CreatedBy</td>
+                            <AuthorizeView Roles="SuperAdmin,Admin">
+                                <Authorized>
+                                    <td>
+                                        <button class="btn btn-xs btn-warning me-1"
+                                                @onclick="() => OpenEditModal(item.Flight)">
+                                            ✎
+                                        </button>
+                                        <button class="btn btn-xs btn-danger"
+                                                @onclick="() => DeleteFlight(flightId)">
+                                            🗑
+                                        </button>
+                                    </td>
+                                </Authorized>
+                            </AuthorizeView>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            @if (totalPages > 1)
+            {
+                <nav>
+                    <ul class="pagination">
+                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                            <button class="page-link" @onclick="PrevPage">&#8249;</button>
+                        </li>
+                        @for (int p = 1; p <= totalPages; p++)
+                        {
+                            var pageNum = p;
+                            var isActive = currentPage == pageNum;
+                            <li class="page-item @(isActive ? "active" : "")">
+                                <button class="page-link" @onclick="() => GoToPage(pageNum)">@pageNum</button>
+                            </li>
+                        }
+                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                            <button class="page-link" @onclick="NextPage">&#8250;</button>
+                        </li>
+                    </ul>
+                </nav>
+                <p class="text-muted small">
+                    Показано @pagedFlights.Count() з @filteredFlights.Count.
+                    Сторінка @currentPage з @totalPages.
+                </p>
+            }
+        }
+    }
+}
+
+<style>
+    .btn-xs {
+        padding: 0.1rem 0.4rem;
+        font-size: 0.75rem;
+    }
+</style>
+
+@code {
+    private List<Crew>? crews;
+    private int selectedCrewId;
+    private Crew? selectedCrew;
+
+    private DateOnly selectedDate = DateOnly.FromDateTime(DateTime.Today);
+
+    private List<DroneItem> availableDrones = new();
+    private List<AmmoItem> availableAmmos = new();
+
+    // Форма додавання
+    private TimeOnly newTime = TimeOnly.FromDateTime(DateTime.Now);
+    private string newCoordPrefix = "36UXB";
+    private string newCoordNumbers = "";
+    private int newDroneItemId = 0;
+    private int newAmmoItemId = 0;
+    private FlightResult newResult = FlightResult.Уражено;
+    private string newSettlement = "";
+    private string addFlightMessage = "";
+    private bool addFlightSuccess = false;
+
+    // Модалка редагування
+    private bool showEditModal = false;
+    private int editingFlightId = 0;
+    private TimeOnly editTime;
+    private string editCoordPrefix = "36UXB";
+    private string editCoordNumbers = "";
+    private FlightResult editResult;
+    private string editSettlement = "";
+    private string editFlightMessage = "";
+    private bool editFlightSuccess = false;
+
+    // Дані
+    private List<Flight> allFlights = new();
+    private List<Flight> filteredFlights = new();
+    private IEnumerable<Flight> pagedFlights = new List<Flight>();
+
+    // Фільтри
+    private string filterResult = "";
+    private string filterSettlement = "";
+    private string filterDroneName = "";
+    private List<string> allDroneNames = new();
+
+    // Пагінація
+    private int currentPage = 1;
+    private int pageSize = 15;
+    private int totalPages => (int)Math.Ceiling(filteredFlights.Count / (double)pageSize);
+
+    protected override async Task OnInitializedAsync()
+    {
+        crews = await Db.Crews.OrderBy(c => c.SortOrder).ToListAsync();
+        if (crews.Any())
+        {
+            selectedCrewId = crews.First().Id;
+            selectedCrew = crews.First();
+            await LoadCrewData();
+        }
+    }
+
+    private async Task SelectCrew(int crewId)
+    {
+        selectedCrewId = crewId;
+        selectedCrew = crews?.FirstOrDefault(c => c.Id == crewId);
+        currentPage = 1;
+        filterResult = ""; filterSettlement = ""; filterDroneName = "";
+        await LoadCrewData();
+    }
+
+    private async Task LoadCrewData()
+    {
+        availableDrones = await Db.DroneItems
+            .Where(d => d.CrewId == selectedCrewId && d.Quantity > 0)
+            .OrderBy(d => d.Name).ToListAsync();
+
+        availableAmmos = await Db.AmmoItems
+            .Where(a => a.CrewId == selectedCrewId && a.Quantity > 0)
+            .OrderBy(a => a.Name).ToListAsync();
+
+        allDroneNames = await Db.DroneItems
+            .Where(d => d.CrewId == selectedCrewId)
+            .Select(d => d.Name).Distinct().ToListAsync();
+
+        await LoadFlights();
+    }
+
+    private async Task LoadFlights()
+    {
+        allFlights = await Db.Flights
+            .Where(f => f.CrewId == selectedCrewId && f.Date == selectedDate)
+            .Include(f => f.DroneItem)
+            .Include(f => f.AmmoItem)
+            .OrderBy(f => f.Time)
+            .ToListAsync();
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        filteredFlights = allFlights.Where(f =>
+        {
+            if (!string.IsNullOrEmpty(filterResult) && f.Result.ToString() != filterResult) return false;
+            if (!string.IsNullOrEmpty(filterSettlement) &&
+                !f.Settlement.Contains(filterSettlement, StringComparison.OrdinalIgnoreCase)) return false;
+            if (!string.IsNullOrEmpty(filterDroneName) && f.DroneItem?.Name != filterDroneName) return false;
+            return true;
+        }).ToList();
+        currentPage = 1;
+        UpdatePagedFlights();
+    }
+
+    private void ResetFilter()
+    {
+        filterResult = ""; filterSettlement = ""; filterDroneName = "";
+        ApplyFilter();
+    }
+
+    private void UpdatePagedFlights()
+    {
+        pagedFlights = filteredFlights.Skip((currentPage - 1) * pageSize).Take(pageSize);
+    }
+
+    private async Task AddFlight()
+    {
+        addFlightMessage = "";
+
+        if (newDroneItemId == 0) { addFlightMessage = "Оберіть безпілотник."; addFlightSuccess = false; return; }
+        if (newAmmoItemId == 0) { addFlightMessage = "Оберіть боєкомплект."; addFlightSuccess = false; return; }
+        if (string.IsNullOrWhiteSpace(newSettlement)) { addFlightMessage = "Введіть населений пункт."; addFlightSuccess = false; return; }
+
+        var drone = await Db.DroneItems.FindAsync(newDroneItemId);
+        var ammo = await Db.AmmoItems.FindAsync(newAmmoItemId);
+
+        if (drone == null || drone.Quantity <= 0) { addFlightMessage = "Безпілотник недоступний на складі."; addFlightSuccess = false; return; }
+        if (ammo == null || ammo.Quantity <= 0) { addFlightMessage = "Боєкомплект недоступний на складі."; addFlightSuccess = false; return; }
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var currentUser = authState.User.Identity?.Name ?? "";
+
+        drone.Quantity -= 1;
+        ammo.Quantity -= 1;
+
+        Db.Flights.Add(new Flight
+        {
+            CrewId = selectedCrewId,
+            Date = selectedDate,
+            Time = newTime,
+            Coordinates = $"{newCoordPrefix} {newCoordNumbers}".Trim(),
+            DroneItemId = newDroneItemId,
+            AmmoItemId = newAmmoItemId,
+            Result = newResult,
+            Settlement = newSettlement.Trim(),
+            CreatedBy = currentUser,
+            CreatedAt = DateTime.Now
+        });
+
+        await Db.SaveChangesAsync();
+
+        addFlightMessage = "Виліт успішно додано. Списано 1 безпілотник та 1 боєкомплект.";
+        addFlightSuccess = true;
+        newCoordNumbers = ""; newDroneItemId = 0; newAmmoItemId = 0;
+        newSettlement = ""; newTime = TimeOnly.FromDateTime(DateTime.Now);
+
+        await LoadCrewData();
+    }
+
+    // ===== РЕДАГУВАННЯ =====
+    private void OpenEditModal(Flight flight)
+    {
+        editingFlightId = flight.Id;
+        // Розбиваємо координати на префікс та числа
+        var parts = flight.Coordinates.Split(' ', 2);
+        editCoordPrefix = parts.Length > 0 ? parts[0] : "36UXB";
+        editCoordNumbers = parts.Length > 1 ? parts[1] : "";
+        editTime = flight.Time;
+        editResult = flight.Result;
+        editSettlement = flight.Settlement;
+        editFlightMessage = "";
+        editFlightSuccess = false;
+        showEditModal = true;
+    }
+
+    private void CloseEditModal()
+    {
+        showEditModal = false;
+        editingFlightId = 0;
+        editFlightMessage = "";
+    }
+
+    private async Task SaveEditFlight()
+    {
+        editFlightMessage = "";
+        if (string.IsNullOrWhiteSpace(editSettlement))
+        {
+            editFlightMessage = "Введіть населений пункт.";
+            editFlightSuccess = false;
+            return;
+        }
+
+        var flight = await Db.Flights.FindAsync(editingFlightId);
+        if (flight == null) { editFlightMessage = "Виліт не знайдено."; editFlightSuccess = false; return; }
+
+        flight.Time = editTime;
+        flight.Coordinates = $"{editCoordPrefix} {editCoordNumbers}".Trim();
+        flight.Result = editResult;
+        flight.Settlement = editSettlement.Trim();
+
+        await Db.SaveChangesAsync();
+
+        editFlightMessage = "Збережено.";
+        editFlightSuccess = true;
+
+        await LoadFlights();
+    }
+
+    private async Task DeleteFlight(int flightId)
+    {
+        var flight = await Db.Flights
+            .Include(f => f.DroneItem)
+            .Include(f => f.AmmoItem)
+            .FirstOrDefaultAsync(f => f.Id == flightId);
+
+        if (flight != null)
+        {
+            if (flight.DroneItem != null) flight.DroneItem.Quantity += 1;
+            if (flight.AmmoItem != null) flight.AmmoItem.Quantity += 1;
+            Db.Flights.Remove(flight);
+            await Db.SaveChangesAsync();
+            await LoadCrewData();
+        }
+    }
+
+    private void GoToPage(int page)
+    {
+        if (page >= 1 && page <= totalPages) { currentPage = page; UpdatePagedFlights(); }
+    }
+
+    private void PrevPage() => GoToPage(currentPage - 1);
+    private void NextPage() => GoToPage(currentPage + 1);
+
+    private string GetResultLabel(FlightResult result) => result switch
+    {
+        FlightResult.Уражено => "Уражено",
+        FlightResult.Знищено => "Знищено",
+        FlightResult.НеУражено => "Не уражено",
+        FlightResult.ВідпрацьованоВРайонЦілі => "Відпрацьовано в район цілі",
+        _ => ""
+    };
+
+    private string GetResultBadge(FlightResult result) => result switch
+    {
+        FlightResult.Уражено => "bg-warning text-dark",
+        FlightResult.Знищено => "bg-success",
+        FlightResult.НеУражено => "bg-danger",
+        FlightResult.ВідпрацьованоВРайонЦілі => "bg-secondary",
+        _ => "bg-light"
+    };
+}

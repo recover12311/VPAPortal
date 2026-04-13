@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using VPAPortal.Data;
 
@@ -11,9 +12,11 @@ using VPAPortal.Data;
 namespace VPAPortal.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260411150133_AddRoles")]
+    partial class AddRoles
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -220,128 +223,6 @@ namespace VPAPortal.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("VPAPortal.Data.Models.AmmoItem", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("CrewId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CrewId");
-
-                    b.ToTable("AmmoItems");
-                });
-
-            modelBuilder.Entity("VPAPortal.Data.Models.Crew", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Crews");
-                });
-
-            modelBuilder.Entity("VPAPortal.Data.Models.DroneItem", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("CrewId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CrewId");
-
-                    b.ToTable("DroneItems");
-                });
-
-            modelBuilder.Entity("VPAPortal.Data.Models.Flight", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("AmmoItemId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Coordinates")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("CrewId")
-                        .HasColumnType("int");
-
-                    b.Property<DateOnly>("Date")
-                        .HasColumnType("date");
-
-                    b.Property<int>("DroneItemId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Result")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Settlement")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<TimeOnly>("Time")
-                        .HasColumnType("time");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AmmoItemId");
-
-                    b.HasIndex("CrewId");
-
-                    b.HasIndex("DroneItemId");
-
-                    b.ToTable("Flights");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -391,64 +272,6 @@ namespace VPAPortal.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("VPAPortal.Data.Models.AmmoItem", b =>
-                {
-                    b.HasOne("VPAPortal.Data.Models.Crew", "Crew")
-                        .WithMany("AmmoItems")
-                        .HasForeignKey("CrewId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Crew");
-                });
-
-            modelBuilder.Entity("VPAPortal.Data.Models.DroneItem", b =>
-                {
-                    b.HasOne("VPAPortal.Data.Models.Crew", "Crew")
-                        .WithMany("DroneItems")
-                        .HasForeignKey("CrewId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Crew");
-                });
-
-            modelBuilder.Entity("VPAPortal.Data.Models.Flight", b =>
-                {
-                    b.HasOne("VPAPortal.Data.Models.AmmoItem", "AmmoItem")
-                        .WithMany()
-                        .HasForeignKey("AmmoItemId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.HasOne("VPAPortal.Data.Models.Crew", "Crew")
-                        .WithMany("Flights")
-                        .HasForeignKey("CrewId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.HasOne("VPAPortal.Data.Models.DroneItem", "DroneItem")
-                        .WithMany()
-                        .HasForeignKey("DroneItemId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.Navigation("AmmoItem");
-
-                    b.Navigation("Crew");
-
-                    b.Navigation("DroneItem");
-                });
-
-            modelBuilder.Entity("VPAPortal.Data.Models.Crew", b =>
-                {
-                    b.Navigation("AmmoItems");
-
-                    b.Navigation("DroneItems");
-
-                    b.Navigation("Flights");
                 });
 #pragma warning restore 612, 618
         }
