@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using VPAPortal.Data;
 
@@ -11,9 +12,11 @@ using VPAPortal.Data;
 namespace VPAPortal.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260421101238_FullRestructure")]
+    partial class FullRestructure
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -386,7 +389,7 @@ namespace VPAPortal.Migrations
                     b.Property<DateOnly>("Date")
                         .HasColumnType("date");
 
-                    b.Property<int?>("DroneItemId")
+                    b.Property<int>("DroneItemId")
                         .HasColumnType("int");
 
                     b.Property<bool>("DroneReturned")
@@ -426,28 +429,18 @@ namespace VPAPortal.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("AmmoItemId")
+                    b.Property<int>("AmmoItemId")
                         .HasColumnType("int");
 
                     b.Property<string>("Coordinates")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<TimeOnly?>("DeliveryTime")
-                        .HasColumnType("time");
-
                     b.Property<int>("FlightId")
                         .HasColumnType("int");
 
-                    b.Property<bool>("IsDelivery")
-                        .HasColumnType("bit");
-
                     b.Property<int>("Result")
                         .HasColumnType("int");
-
-                    b.Property<string>("Settlement")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Target")
                         .IsRequired()
@@ -699,7 +692,8 @@ namespace VPAPortal.Migrations
                     b.HasOne("VPAPortal.Data.Models.DroneItem", "DroneItem")
                         .WithMany()
                         .HasForeignKey("DroneItemId")
-                        .OnDelete(DeleteBehavior.NoAction);
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
 
                     b.Navigation("Crew");
 
@@ -711,7 +705,8 @@ namespace VPAPortal.Migrations
                     b.HasOne("VPAPortal.Data.Models.AmmoItem", "AmmoItem")
                         .WithMany()
                         .HasForeignKey("AmmoItemId")
-                        .OnDelete(DeleteBehavior.NoAction);
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
 
                     b.HasOne("VPAPortal.Data.Models.Flight", "Flight")
                         .WithMany("Drops")

@@ -9,9 +9,9 @@ namespace VPAPortal.Data
         {
             var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
             var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var db = serviceProvider.GetRequiredService<ApplicationDbContext>();
 
-            // Створюємо ролі
-            string[] roles = ["SuperAdmin", "Admin", "Moderator", "Viewer"];
+            string[] roles = ["SuperAdmin", "Moderator", "Viewer"];
             foreach (var role in roles)
             {
                 if (!await roleManager.RoleExistsAsync(role))
@@ -23,12 +23,8 @@ namespace VPAPortal.Data
                 }
             }
 
-            // Створюємо SuperAdmin
-            var adminUsername = "recover12311@gmail.com";
-
-            // Шукаємо по UserName (не по Email)
+            var adminUsername = "admin1234567";
             var adminUser = await userManager.FindByNameAsync(adminUsername);
-
             if (adminUser == null)
             {
                 adminUser = new ApplicationUser
@@ -37,26 +33,21 @@ namespace VPAPortal.Data
                     Email = adminUsername,
                     EmailConfirmed = true
                 };
-
-                var createResult = await userManager.CreateAsync(adminUser, "Aa41824451@");
+                var createResult = await userManager.CreateAsync(adminUser, "Qwerty1234567@");
                 if (!createResult.Succeeded)
                     throw new Exception("Помилка створення юзера: " +
                         string.Join(", ", createResult.Errors.Select(e => e.Description)));
 
-                var roleAssignResult = await userManager.AddToRoleAsync(adminUser, "SuperAdmin");
-                if (!roleAssignResult.Succeeded)
-                    throw new Exception("Помилка призначення ролі: " +
-                        string.Join(", ", roleAssignResult.Errors.Select(e => e.Description)));
+                await userManager.AddToRoleAsync(adminUser, "SuperAdmin");
             }
 
-            var db = serviceProvider.GetRequiredService<ApplicationDbContext>();
-            if (!db.Crews.Any())
+            // Seed рот
+            if (!db.Companies.Any())
             {
-                db.Crews.AddRange(
-                    new Crew { Name = "Екіпаж 1", SortOrder = 1 },
-                    new Crew { Name = "Екіпаж 2", SortOrder = 2 },
-                    new Crew { Name = "Екіпаж 3", SortOrder = 3 },
-                    new Crew { Name = "Екіпаж 4", SortOrder = 4 }
+                db.Companies.AddRange(
+                    new Company { Name = "1 рота", SortOrder = 1 },
+                    new Company { Name = "2 рота", SortOrder = 2 },
+                    new Company { Name = "3 рота", SortOrder = 3 }
                 );
                 await db.SaveChangesAsync();
             }

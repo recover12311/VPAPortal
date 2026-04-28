@@ -1,54 +1,55 @@
 ﻿@page "/warehouse"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
-@using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
 @using VPAPortal.Data
 @using VPAPortal.Data.Models
 @attribute [Authorize]
 @inject ApplicationDbContext Db
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IWebHostEnvironment Env
 
 <PageTitle>Склад</PageTitle>
 
 <h3 class="mb-4">Склад</h3>
 
-@if (crews == null)
+@if (companies == null)
 {
     <p>Завантаження...</p>
 }
 else
 {
-    <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+    @* ===== ВКЛАДКИ РОТ ===== *@
+    <div class="d-flex align-items-center flex-wrap gap-2 mb-4">
         <ul class="nav nav-tabs flex-nowrap mb-0" style="border-bottom:none;">
-            @foreach (var crew in crews)
+            @foreach (var company in companies)
             {
-                var crewId = crew.Id;
+                var cId = company.Id;
                 <li class="nav-item">
-                    <button class="nav-link @(selectedCrewId == crewId ? "active" : "")"
-                            @onclick="() => SelectCrew(crewId)">
-                        @crew.Name
+                    <button class="nav-link @(selectedCompanyId == cId ? "active" : "")"
+                            @onclick="() => SelectCompany(cId)">
+                        @company.Name
                     </button>
                 </li>
             }
         </ul>
-        <AuthorizeView Roles="SuperAdmin,Admin">
+        <AuthorizeView Roles="SuperAdmin,Moderator">
             <Authorized>
-                @if (!showAddCrewForm)
+                @if (!showAddCompanyForm)
                 {
                     <button class="btn btn-sm btn-outline-success ms-2"
-                            @onclick="() => showAddCrewForm = true">
-                        + Екіпаж
+                            @onclick="() => showAddCompanyForm = true">
+                        + Рота
                     </button>
                 }
                 else
                 {
                     <div class="d-flex gap-2 align-items-center ms-2">
                         <input class="form-control form-control-sm" style="width:150px;"
-                               @bind="newCrewName" placeholder="Назва екіпажу" />
-                        <button class="btn btn-sm btn-success" @onclick="AddCrew">Додати</button>
+                               @bind="newCompanyName" placeholder="Назва роти" />
+                        <button class="btn btn-sm btn-success" @onclick="AddCompany">Додати</button>
                         <button class="btn btn-sm btn-secondary"
-                                @onclick="() => showAddCrewForm = false">
+                                @onclick="() => showAddCompanyForm = false">
                             ✕
                         </button>
                     </div>
@@ -57,35 +58,36 @@ else
         </AuthorizeView>
     </div>
 
-    @if (selectedCrew != null)
+    @if (selectedCompany != null)
     {
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="mb-0">@selectedCrew.Name</h5>
-            <AuthorizeView Roles="SuperAdmin,Admin">
+            <h5 class="mb-0">@selectedCompany.Name</h5>
+            <AuthorizeView Roles="SuperAdmin,Moderator">
                 <Authorized>
                     <button class="btn btn-sm btn-outline-danger"
-                            @onclick="() => ShowDeleteCrewConfirm(selectedCrew.Id, selectedCrew.Name)">
-                        🗑 Видалити екіпаж
+                            @onclick="() => ShowDeleteCompanyConfirm(selectedCompany.Id, selectedCompany.Name)">
+                        🗑 Видалити роту
                     </button>
                 </Authorized>
             </AuthorizeView>
         </div>
 
-        @if (showDeleteCrewConfirm)
+        @if (showDeleteCompanyConfirm)
         {
             <div class="alert alert-danger d-flex align-items-center gap-3 mb-3">
-                <span>Видалити <strong>@deletingCrewName</strong> та всі його дані?</span>
-                <button class="btn btn-sm btn-danger" @onclick="DeleteCrew">Так, видалити</button>
+                <span>Видалити <strong>@deletingCompanyName</strong> та всі її дані?</span>
+                <button class="btn btn-sm btn-danger" @onclick="DeleteCompany">Так, видалити</button>
                 <button class="btn btn-sm btn-secondary"
-                        @onclick="() => showDeleteCrewConfirm = false">
+                        @onclick="() => showDeleteCompanyConfirm = false">
                     Скасувати
                 </button>
             </div>
         }
 
-        <div class="row g-4 align-items-start">
+        @* ===== ЗАПАСИ ===== *@
+        <div class="row g-4 align-items-start mb-4">
 
-            @* ===== БЕЗПІЛОТНИКИ ===== *@
+            @* БЕЗПІЛОТНИКИ *@
             <div class="col-md-6">
                 <div class="card">
                     <div class="card-header fw-bold">🚁 Безпілотники</div>
@@ -94,23 +96,22 @@ else
                             <thead class="table-dark">
                                 <tr>
                                     <th>Назва</th>
-                                    <th style="width:100px;">Кількість</th>
-                                    <AuthorizeView Roles="SuperAdmin,Admin">
-                                        <Authorized>
-                                            <th style="width:80px;">Дії</th>
-                                        </Authorized>
+                                    <th style="width:110px;">Кількість</th>
+                                    <AuthorizeView Roles="SuperAdmin,Moderator">
+                                        <Authorized><th style="width:80px;">Дії</th></Authorized>
                                     </AuthorizeView>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var item in drones)
+                                @foreach (var item in wDrones)
                                 {
-                                    var droneId = item.Id;
+                                    var itemId = item.Id;
                                     <tr>
                                         <td>
-                                            @if (editingDroneId == droneId)
+                                            @if (editingWDroneId == itemId)
                                             {
-                                                <input class="form-control form-control-sm" @bind="editingDroneName" />
+                                                <input class="form-control form-control-sm"
+                                                       @bind="editingWDroneName" />
                                             }
                                             else
                                             {
@@ -119,10 +120,11 @@ else
                                             }
                                         </td>
                                         <td>
-                                            @if (editingDroneId == droneId)
+                                            @if (editingWDroneId == itemId)
                                             {
-                                                <input class="form-control form-control-sm" type="number"
-                                                       min="0" @bind="editingDroneQty" />
+                                                <input class="form-control form-control-sm"
+                                                       type="number" min="0"
+                                                       @bind="editingWDroneQty" />
                                             }
                                             else
                                             {
@@ -131,28 +133,28 @@ else
                                                 </span>
                                             }
                                         </td>
-                                        <AuthorizeView Roles="SuperAdmin,Admin">
+                                        <AuthorizeView Roles="SuperAdmin,Moderator">
                                             <Authorized>
                                                 <td>
-                                                    @if (editingDroneId == droneId)
+                                                    @if (editingWDroneId == itemId)
                                                     {
                                                         <button class="btn btn-xs btn-success me-1"
-                                                                @onclick="() => SaveDrone(droneId)">
+                                                                @onclick="() => SaveWDrone(itemId)">
                                                             ✓
                                                         </button>
                                                         <button class="btn btn-xs btn-secondary"
-                                                                @onclick="CancelDroneEdit">
+                                                                @onclick="() => editingWDroneId = 0">
                                                             ✕
                                                         </button>
                                                     }
                                                     else
                                                     {
                                                         <button class="btn btn-xs btn-warning me-1"
-                                                                @onclick="() => StartDroneEdit(item)">
+                                                                @onclick="() => StartWDroneEdit(item)">
                                                             ✎
                                                         </button>
                                                         <button class="btn btn-xs btn-danger"
-                                                                @onclick="() => DeleteDrone(droneId)">
+                                                                @onclick="() => DeleteWDrone(itemId)">
                                                             🗑
                                                         </button>
                                                     }
@@ -161,28 +163,33 @@ else
                                         </AuthorizeView>
                                     </tr>
                                 }
-                                @if (!drones.Any())
+                                @if (!wDrones.Any())
                                 {
                                     <tr>
-                                        <td colspan="3" class="text-muted text-center py-2">Немає позицій</td>
+                                        <td colspan="3" class="text-muted text-center py-2">
+                                            Немає позицій
+                                        </td>
                                     </tr>
                                 }
                             </tbody>
                         </table>
                     </div>
-                    <AuthorizeView Roles="SuperAdmin,Admin">
+                    <AuthorizeView Roles="SuperAdmin,Moderator">
                         <Authorized>
                             <div class="card-footer">
-                                @if (showAddDroneForm)
+                                @if (showAddWDroneForm)
                                 {
                                     <div class="d-flex gap-2">
                                         <input class="form-control form-control-sm"
-                                               @bind="newDroneName" placeholder="Назва" />
+                                               @bind="newWDroneName" placeholder="Назва" />
                                         <input class="form-control form-control-sm" type="number"
-                                               min="0" @bind="newDroneQty" style="width:80px;" />
-                                        <button class="btn btn-sm btn-success" @onclick="AddDrone">+</button>
+                                               min="0" @bind="newWDroneQty" style="width:80px;" />
+                                        <button class="btn btn-sm btn-success"
+                                                @onclick="AddWDrone">
+                                            +
+                                        </button>
                                         <button class="btn btn-sm btn-secondary"
-                                                @onclick="() => showAddDroneForm = false">
+                                                @onclick="() => showAddWDroneForm = false">
                                             ✕
                                         </button>
                                     </div>
@@ -190,7 +197,7 @@ else
                                 else
                                 {
                                     <button class="btn btn-sm btn-outline-primary w-100"
-                                            @onclick="() => showAddDroneForm = true">
+                                            @onclick="() => showAddWDroneForm = true">
                                         + Додати безпілотник
                                     </button>
                                 }
@@ -200,7 +207,7 @@ else
                 </div>
             </div>
 
-            @* ===== БОЄКОМПЛЕКТ ===== *@
+            @* БОЄКОМПЛЕКТ *@
             <div class="col-md-6">
                 <div class="card">
                     <div class="card-header fw-bold">💣 Боєкомплект</div>
@@ -209,23 +216,22 @@ else
                             <thead class="table-dark">
                                 <tr>
                                     <th>Назва</th>
-                                    <th style="width:100px;">Кількість</th>
-                                    <AuthorizeView Roles="SuperAdmin,Admin">
-                                        <Authorized>
-                                            <th style="width:80px;">Дії</th>
-                                        </Authorized>
+                                    <th style="width:110px;">Кількість</th>
+                                    <AuthorizeView Roles="SuperAdmin,Moderator">
+                                        <Authorized><th style="width:80px;">Дії</th></Authorized>
                                     </AuthorizeView>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var item in ammos)
+                                @foreach (var item in wAmmos)
                                 {
-                                    var ammoId = item.Id;
+                                    var itemId = item.Id;
                                     <tr>
                                         <td>
-                                            @if (editingAmmoId == ammoId)
+                                            @if (editingWAmmoId == itemId)
                                             {
-                                                <input class="form-control form-control-sm" @bind="editingAmmoName" />
+                                                <input class="form-control form-control-sm"
+                                                       @bind="editingWAmmoName" />
                                             }
                                             else
                                             {
@@ -234,10 +240,11 @@ else
                                             }
                                         </td>
                                         <td>
-                                            @if (editingAmmoId == ammoId)
+                                            @if (editingWAmmoId == itemId)
                                             {
-                                                <input class="form-control form-control-sm" type="number"
-                                                       min="0" @bind="editingAmmoQty" />
+                                                <input class="form-control form-control-sm"
+                                                       type="number" min="0"
+                                                       @bind="editingWAmmoQty" />
                                             }
                                             else
                                             {
@@ -246,28 +253,28 @@ else
                                                 </span>
                                             }
                                         </td>
-                                        <AuthorizeView Roles="SuperAdmin,Admin">
+                                        <AuthorizeView Roles="SuperAdmin,Moderator">
                                             <Authorized>
                                                 <td>
-                                                    @if (editingAmmoId == ammoId)
+                                                    @if (editingWAmmoId == itemId)
                                                     {
                                                         <button class="btn btn-xs btn-success me-1"
-                                                                @onclick="() => SaveAmmo(ammoId)">
+                                                                @onclick="() => SaveWAmmo(itemId)">
                                                             ✓
                                                         </button>
                                                         <button class="btn btn-xs btn-secondary"
-                                                                @onclick="CancelAmmoEdit">
+                                                                @onclick="() => editingWAmmoId = 0">
                                                             ✕
                                                         </button>
                                                     }
                                                     else
                                                     {
                                                         <button class="btn btn-xs btn-warning me-1"
-                                                                @onclick="() => StartAmmoEdit(item)">
+                                                                @onclick="() => StartWAmmoEdit(item)">
                                                             ✎
                                                         </button>
                                                         <button class="btn btn-xs btn-danger"
-                                                                @onclick="() => DeleteAmmo(ammoId)">
+                                                                @onclick="() => DeleteWAmmo(itemId)">
                                                             🗑
                                                         </button>
                                                     }
@@ -276,28 +283,33 @@ else
                                         </AuthorizeView>
                                     </tr>
                                 }
-                                @if (!ammos.Any())
+                                @if (!wAmmos.Any())
                                 {
                                     <tr>
-                                        <td colspan="3" class="text-muted text-center py-2">Немає позицій</td>
+                                        <td colspan="3" class="text-muted text-center py-2">
+                                            Немає позицій
+                                        </td>
                                     </tr>
                                 }
                             </tbody>
                         </table>
                     </div>
-                    <AuthorizeView Roles="SuperAdmin,Admin">
+                    <AuthorizeView Roles="SuperAdmin,Moderator">
                         <Authorized>
                             <div class="card-footer">
-                                @if (showAddAmmoForm)
+                                @if (showAddWAmmoForm)
                                 {
                                     <div class="d-flex gap-2">
                                         <input class="form-control form-control-sm"
-                                               @bind="newAmmoName" placeholder="Назва" />
+                                               @bind="newWAmmoName" placeholder="Назва" />
                                         <input class="form-control form-control-sm" type="number"
-                                               min="0" @bind="newAmmoQty" style="width:80px;" />
-                                        <button class="btn btn-sm btn-success" @onclick="AddAmmo">+</button>
+                                               min="0" @bind="newWAmmoQty" style="width:80px;" />
+                                        <button class="btn btn-sm btn-success"
+                                                @onclick="AddWAmmo">
+                                            +
+                                        </button>
                                         <button class="btn btn-sm btn-secondary"
-                                                @onclick="() => showAddAmmoForm = false">
+                                                @onclick="() => showAddWAmmoForm = false">
                                             ✕
                                         </button>
                                     </div>
@@ -305,7 +317,7 @@ else
                                 else
                                 {
                                     <button class="btn btn-sm btn-outline-primary w-100"
-                                            @onclick="() => showAddAmmoForm = true">
+                                            @onclick="() => showAddWAmmoForm = true">
                                         + Додати боєкомплект
                                     </button>
                                 }
@@ -314,7 +326,208 @@ else
                     </AuthorizeView>
                 </div>
             </div>
+        </div>
 
+        @* ===== НАКЛАДНІ ===== *@
+        <div class="card mb-4">
+            <div class="card-header fw-bold">📄 Накладні</div>
+            <div class="card-body">
+                <AuthorizeView Roles="SuperAdmin,Moderator">
+                    <Authorized>
+                        <div class="row g-3 mb-3 align-items-end">
+                            <div class="col-md-3">
+                                <label class="form-label">Номер накладної</label>
+                                <input class="form-control" @bind="newInvoiceNumber"
+                                       placeholder="Номер" />
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Дата</label>
+                                <input type="date" class="form-control" @bind="newInvoiceDate" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Фото накладної</label>
+                                <InputFile OnChange="OnInvoiceFileSelected"
+                                           accept="image/*,.pdf" class="form-control" />
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-primary w-100"
+                                        @onclick="AddInvoice">
+                                    Додати
+                                </button>
+                            </div>
+                        </div>
+                        @if (!string.IsNullOrEmpty(invoiceMessage))
+                        {
+                            <div class="alert @(invoiceSuccess ? "alert-success" : "alert-danger")">
+                                @invoiceMessage
+                            </div>
+                        }
+                    </Authorized>
+                </AuthorizeView>
+
+                @* Фільтр накладних *@
+                <div class="d-flex gap-2 mb-3 align-items-end flex-wrap">
+                    <div>
+                        <label class="form-label mb-1 small">Від</label>
+                        <input type="date" class="form-control form-control-sm"
+                               @bind="invoiceFilterFrom" @bind:after="ApplyInvoiceFilter" />
+                    </div>
+                    <div>
+                        <label class="form-label mb-1 small">До</label>
+                        <input type="date" class="form-control form-control-sm"
+                               @bind="invoiceFilterTo" @bind:after="ApplyInvoiceFilter" />
+                    </div>
+                    <div>
+                        <label class="form-label mb-1 small">Номер</label>
+                        <input class="form-control form-control-sm" style="width:150px;"
+                               @bind="invoiceFilterNumber" @bind:after="ApplyInvoiceFilter"
+                               placeholder="Пошук..." />
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary"
+                            @onclick="ResetInvoiceFilter">
+                        ✕ Скинути
+                    </button>
+                </div>
+
+                @if (!filteredInvoices.Any())
+                {
+                    <p class="text-muted">Накладних немає.</p>
+                }
+                else
+                {
+                    <table class="table table-sm table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th @onclick='() => SortInvoices("number")' style="cursor:pointer">
+                                    Номер @InvoiceSortIcon("number")
+                                </th>
+                                <th @onclick='() => SortInvoices("date")' style="cursor:pointer">
+                                    Дата @InvoiceSortIcon("date")
+                                </th>
+                                <th>Файл</th>
+                                <th>Додав</th>
+                                <AuthorizeView Roles="SuperAdmin,Moderator">
+                                    <Authorized><th style="width:60px;">Дії</th></Authorized>
+                                </AuthorizeView>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var inv in pagedInvoices)
+                            {
+                                var invId = inv.Id;
+                                <tr>
+                                    <td>@inv.InvoiceNumber</td>
+                                    <td>@inv.Date.ToString("dd.MM.yyyy")</td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(inv.PhotoPath))
+                                        {
+                                            <a href="@inv.PhotoPath" target="_blank"
+                                               class="btn btn-xs btn-outline-info">
+                                                📎 Переглянути
+                                            </a>
+                                        }
+                                        else
+                                        {
+
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                    <td class="text-muted small">@inv.CreatedBy</td>
+                                    <AuthorizeView Roles="SuperAdmin,Moderator">
+                                        <Authorized>
+                                            <td>
+                                                <button class="btn btn-xs btn-danger"
+                                                        @onclick="() => DeleteInvoice(invId)">
+                                                    🗑
+                                                </button>
+                                            </td>
+                                        </Authorized>
+                                    </AuthorizeView>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    @RenderPagination(invoicePage, invoiceTotalPages,
+                    (p) => { invoicePage = p; UpdatePagedInvoices(); },
+                filteredInvoices.Count)
+                }
+            </div>
+        </div>
+
+        @* ===== ЛОГУВАННЯ ===== *@
+        <div class="card">
+            <div class="card-header fw-bold">📋 Журнал змін складу</div>
+            <div class="card-body">
+                <div class="d-flex gap-2 mb-3 align-items-end flex-wrap">
+                    <div>
+                        <label class="form-label mb-1 small">Від</label>
+                        <input type="date" class="form-control form-control-sm"
+                               @bind="logFilterFrom" @bind:after="ApplyLogFilter" />
+                    </div>
+                    <div>
+                        <label class="form-label mb-1 small">До</label>
+                        <input type="date" class="form-control form-control-sm"
+                               @bind="logFilterTo" @bind:after="ApplyLogFilter" />
+                    </div>
+                    <div>
+                        <label class="form-label mb-1 small">Тип</label>
+                        <select class="form-select form-select-sm" style="width:160px;"
+                                @bind="logFilterType" @bind:after="ApplyLogFilter">
+                            <option value="">— всі —</option>
+                            <option value="Дрон">Безпілотник</option>
+                            <option value="Боєкомплект">Боєкомплект</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary"
+                            @onclick="ResetLogFilter">
+                        ✕ Скинути
+                    </button>
+                </div>
+
+                @if (!filteredLogs.Any())
+                {
+                    <p class="text-muted">Записів немає.</p>
+                }
+                else
+                {
+                    <table class="table table-sm table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th @onclick='() => SortLogs("date")' style="cursor:pointer">
+                                    Дата @LogSortIcon("date")
+                                </th>
+                                <th>Тип</th>
+                                <th>Назва</th>
+                                <th>Дія</th>
+                                <th>Було</th>
+                                <th>Стало</th>
+                                <th>Хто</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var log in pagedLogs)
+                            {
+                                <tr>
+                                    <td>@log.ChangedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                                    <td>@log.ItemType</td>
+                                    <td>@log.ItemName</td>
+                                    <td>
+                                        <span class="badge @GetLogActionBadge(log.Action)">
+                                            @log.Action
+                                        </span>
+                                    </td>
+                                    <td>@log.QuantityBefore</td>
+                                    <td>@log.QuantityAfter</td>
+                                    <td class="text-muted small">@log.ChangedBy</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    @RenderPagination(logPage, logTotalPages,
+                    (p) => { logPage = p; UpdatePagedLogs(); },
+                filteredLogs.Count)
+                }
+            </div>
         </div>
     }
 }
@@ -327,147 +540,500 @@ else
 </style>
 
 @code {
-    private List<Crew>? crews;
-    private int selectedCrewId;
-    private Crew? selectedCrew;
-    private List<DroneItem> drones = new();
-    private List<AmmoItem> ammos = new();
+    private List<Company>? companies;
+    private int selectedCompanyId;
+    private Company? selectedCompany;
+    private string currentUser = "";
 
-    private bool showAddCrewForm = false;
-    private string newCrewName = "";
-    private bool showDeleteCrewConfirm = false;
-    private int deletingCrewId;
-    private string deletingCrewName = "";
+    // Роти
+    private bool showAddCompanyForm = false;
+    private string newCompanyName = "";
+    private bool showDeleteCompanyConfirm = false;
+    private int deletingCompanyId;
+    private string deletingCompanyName = "";
 
-    private bool showAddDroneForm = false;
-    private string newDroneName = "";
-    private int newDroneQty = 0;
-    private int editingDroneId = 0;
-    private string editingDroneName = "";
-    private int editingDroneQty = 0;
+    // Склад — безпілотники
+    private List<WarehouseDroneItem> wDrones = new();
+    private bool showAddWDroneForm = false;
+    private string newWDroneName = "";
+    private int newWDroneQty = 0;
+    private int editingWDroneId = 0;
+    private string editingWDroneName = "";
+    private int editingWDroneQty = 0;
 
-    private bool showAddAmmoForm = false;
-    private string newAmmoName = "";
-    private int newAmmoQty = 0;
-    private int editingAmmoId = 0;
-    private string editingAmmoName = "";
-    private int editingAmmoQty = 0;
+    // Склад — боєкомплект
+    private List<WarehouseAmmoItem> wAmmos = new();
+    private bool showAddWAmmoForm = false;
+    private string newWAmmoName = "";
+    private int newWAmmoQty = 0;
+    private int editingWAmmoId = 0;
+    private string editingWAmmoName = "";
+    private int editingWAmmoQty = 0;
 
-    protected override async Task OnInitializedAsync() => await LoadCrews();
+    // Накладні
+    private List<WarehouseInvoice> allInvoices = new();
+    private List<WarehouseInvoice> filteredInvoices = new();
+    private List<WarehouseInvoice> pagedInvoices = new();
+    private string newInvoiceNumber = "";
+    private DateOnly newInvoiceDate = DateOnly.FromDateTime(DateTime.Today);
+    private IBrowserFile? invoiceFile;
+    private string invoiceMessage = "";
+    private bool invoiceSuccess = false;
+    private int invoicePage = 1;
+    private int invoicePageSize = 10;
+    private int invoiceTotalPages => (int)Math.Ceiling(filteredInvoices.Count / (double)invoicePageSize);
+    private string invoiceFilterNumber = "";
+    private DateOnly? invoiceFilterFrom = null;
+    private DateOnly? invoiceFilterTo = null;
+    private string invoiceSortField = "date";
+    private bool invoiceSortDesc = true;
 
-    private async Task LoadCrews()
+    // Логування
+    private List<WarehouseLog> allLogs = new();
+    private List<WarehouseLog> filteredLogs = new();
+    private List<WarehouseLog> pagedLogs = new();
+    private int logPage = 1;
+    private int logPageSize = 15;
+    private int logTotalPages => (int)Math.Ceiling(filteredLogs.Count / (double)logPageSize);
+    private DateOnly? logFilterFrom = null;
+    private DateOnly? logFilterTo = null;
+    private string logFilterType = "";
+    private string logSortField = "date";
+    private bool logSortDesc = true;
+
+    protected override async Task OnInitializedAsync()
     {
-        crews = await Db.Crews.OrderBy(c => c.SortOrder).ToListAsync();
-        if (crews.Any() && selectedCrewId == 0)
-            selectedCrewId = crews.First().Id;
-        await LoadCrewData();
-    }
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        currentUser = authState.User.Identity?.Name ?? "";
 
-    private async Task SelectCrew(int crewId)
-    {
-        selectedCrewId = crewId;
-        showAddDroneForm = false;
-        showAddAmmoForm = false;
-        editingDroneId = 0;
-        editingAmmoId = 0;
-        await LoadCrewData();
-    }
-
-    private async Task LoadCrewData()
-    {
-        selectedCrew = crews?.FirstOrDefault(c => c.Id == selectedCrewId);
-        drones = await Db.DroneItems.Where(d => d.CrewId == selectedCrewId).OrderBy(d => d.Name).ToListAsync();
-        ammos = await Db.AmmoItems.Where(a => a.CrewId == selectedCrewId).OrderBy(a => a.Name).ToListAsync();
-    }
-
-    private async Task AddCrew()
-    {
-        if (string.IsNullOrWhiteSpace(newCrewName)) return;
-        var maxOrder = crews!.Any() ? crews.Max(c => c.SortOrder) : 0;
-        var crew = new Crew { Name = newCrewName.Trim(), SortOrder = maxOrder + 1 };
-        Db.Crews.Add(crew);
-        await Db.SaveChangesAsync();
-        newCrewName = "";
-        showAddCrewForm = false;
-        await LoadCrews();
-        selectedCrewId = crew.Id;
-        await LoadCrewData();
-    }
-
-    private void ShowDeleteCrewConfirm(int crewId, string crewName)
-    {
-        deletingCrewId = crewId;
-        deletingCrewName = crewName;
-        showDeleteCrewConfirm = true;
-    }
-
-    private async Task DeleteCrew()
-    {
-        var crew = await Db.Crews.FindAsync(deletingCrewId);
-        if (crew != null)
+        companies = await Db.Companies.OrderBy(c => c.SortOrder).ToListAsync();
+        if (companies.Any())
         {
-            Db.DroneItems.RemoveRange(Db.DroneItems.Where(d => d.CrewId == deletingCrewId));
-            Db.AmmoItems.RemoveRange(Db.AmmoItems.Where(a => a.CrewId == deletingCrewId));
-            Db.Flights.RemoveRange(Db.Flights.Where(f => f.CrewId == deletingCrewId));
-            Db.Crews.Remove(crew);
+            selectedCompanyId = companies.First().Id;
+            await LoadCompanyData();
+        }
+    }
+
+    private async Task SelectCompany(int id)
+    {
+        selectedCompanyId = id;
+        editingWDroneId = 0; editingWAmmoId = 0;
+        showAddWDroneForm = false; showAddWAmmoForm = false;
+        await LoadCompanyData();
+    }
+
+    private async Task LoadCompanyData()
+    {
+        selectedCompany = companies?.FirstOrDefault(c => c.Id == selectedCompanyId);
+
+        wDrones = await Db.WarehouseDroneItems
+            .Where(d => d.CompanyId == selectedCompanyId)
+            .OrderBy(d => d.Name).ToListAsync();
+
+        wAmmos = await Db.WarehouseAmmoItems
+            .Where(a => a.CompanyId == selectedCompanyId)
+            .OrderBy(a => a.Name).ToListAsync();
+
+        allInvoices = await Db.WarehouseInvoices
+            .Where(i => i.CompanyId == selectedCompanyId)
+            .OrderByDescending(i => i.Date).ToListAsync();
+
+        allLogs = await Db.WarehouseLogs
+            .Where(l => l.CompanyId == selectedCompanyId)
+            .OrderByDescending(l => l.ChangedAt).ToListAsync();
+
+        ApplyInvoiceFilter();
+        ApplyLogFilter();
+    }
+
+    // ===== РОТИ =====
+    private async Task AddCompany()
+    {
+        if (string.IsNullOrWhiteSpace(newCompanyName)) return;
+        var maxOrder = companies!.Any() ? companies.Max(c => c.SortOrder) : 0;
+        var company = new Company { Name = newCompanyName.Trim(), SortOrder = maxOrder + 1 };
+        Db.Companies.Add(company);
+        await Db.SaveChangesAsync();
+        newCompanyName = ""; showAddCompanyForm = false;
+        companies = await Db.Companies.OrderBy(c => c.SortOrder).ToListAsync();
+        selectedCompanyId = company.Id;
+        await LoadCompanyData();
+    }
+
+    private void ShowDeleteCompanyConfirm(int id, string name)
+    {
+        deletingCompanyId = id; deletingCompanyName = name;
+        showDeleteCompanyConfirm = true;
+    }
+
+    private async Task DeleteCompany()
+    {
+        var company = await Db.Companies.FindAsync(deletingCompanyId);
+        if (company != null)
+        {
+            Db.WarehouseDroneItems.RemoveRange(
+                Db.WarehouseDroneItems.Where(d => d.CompanyId == deletingCompanyId));
+            Db.WarehouseAmmoItems.RemoveRange(
+                Db.WarehouseAmmoItems.Where(a => a.CompanyId == deletingCompanyId));
+            Db.WarehouseInvoices.RemoveRange(
+                Db.WarehouseInvoices.Where(i => i.CompanyId == deletingCompanyId));
+            Db.WarehouseLogs.RemoveRange(
+                Db.WarehouseLogs.Where(l => l.CompanyId == deletingCompanyId));
+            Db.Companies.Remove(company);
             await Db.SaveChangesAsync();
         }
-        showDeleteCrewConfirm = false;
-        selectedCrewId = 0;
-        await LoadCrews();
+        showDeleteCompanyConfirm = false;
+        selectedCompanyId = 0;
+        companies = await Db.Companies.OrderBy(c => c.SortOrder).ToListAsync();
+        if (companies.Any())
+        {
+            selectedCompanyId = companies.First().Id;
+            await LoadCompanyData();
+        }
+        else { selectedCompany = null; }
     }
 
-    private async Task AddDrone()
+    // ===== БЕЗПІЛОТНИКИ СКЛАДУ =====
+    private async Task AddWDrone()
     {
-        if (string.IsNullOrWhiteSpace(newDroneName)) return;
-        Db.DroneItems.Add(new DroneItem { CrewId = selectedCrewId, Name = newDroneName.Trim(), Quantity = newDroneQty });
+        if (string.IsNullOrWhiteSpace(newWDroneName)) return;
+
+        var existing = wDrones.FirstOrDefault(d =>
+            d.Name.Equals(newWDroneName.Trim(), StringComparison.OrdinalIgnoreCase));
+
+        if (existing != null)
+        {
+            await AddWarehouseLog("Дрон", existing.Name, existing.Quantity,
+                existing.Quantity + newWDroneQty, "Додано");
+            existing.Quantity += newWDroneQty;
+        }
+        else
+        {
+            var item = new WarehouseDroneItem
+            {
+                CompanyId = selectedCompanyId,
+                Name = newWDroneName.Trim(),
+                Quantity = newWDroneQty
+            };
+            Db.WarehouseDroneItems.Add(item);
+            await Db.SaveChangesAsync();
+            await AddWarehouseLog("Дрон", item.Name, 0, newWDroneQty, "Додано");
+        }
+
         await Db.SaveChangesAsync();
-        newDroneName = ""; newDroneQty = 0; showAddDroneForm = false;
-        await LoadCrewData();
+        newWDroneName = ""; newWDroneQty = 0; showAddWDroneForm = false;
+        await LoadCompanyData();
     }
 
-    private void StartDroneEdit(DroneItem item) { editingDroneId = item.Id; editingDroneName = item.Name; editingDroneQty = item.Quantity; }
-    private void CancelDroneEdit() => editingDroneId = 0;
-
-    private async Task SaveDrone(int id)
+    private void StartWDroneEdit(WarehouseDroneItem item)
     {
-        var item = await Db.DroneItems.FindAsync(id);
-        if (item != null) { item.Name = editingDroneName.Trim(); item.Quantity = editingDroneQty; await Db.SaveChangesAsync(); }
-        editingDroneId = 0;
-        await LoadCrewData();
+        editingWDroneId = item.Id;
+        editingWDroneName = item.Name;
+        editingWDroneQty = item.Quantity;
     }
 
-    private async Task DeleteDrone(int id)
+    private async Task SaveWDrone(int id)
     {
-        var item = await Db.DroneItems.FindAsync(id);
-        if (item != null) { Db.DroneItems.Remove(item); await Db.SaveChangesAsync(); }
-        await LoadCrewData();
+        var item = await Db.WarehouseDroneItems.FindAsync(id);
+        if (item != null)
+        {
+            await AddWarehouseLog("Дрон", item.Name, item.Quantity, editingWDroneQty, "Змінено");
+            item.Name = editingWDroneName.Trim();
+            item.Quantity = editingWDroneQty;
+            await Db.SaveChangesAsync();
+        }
+        editingWDroneId = 0;
+        await LoadCompanyData();
     }
 
-    private async Task AddAmmo()
+    private async Task DeleteWDrone(int id)
     {
-        if (string.IsNullOrWhiteSpace(newAmmoName)) return;
-        Db.AmmoItems.Add(new AmmoItem { CrewId = selectedCrewId, Name = newAmmoName.Trim(), Quantity = newAmmoQty });
+        var item = await Db.WarehouseDroneItems.FindAsync(id);
+        if (item != null)
+        {
+            await AddWarehouseLog("Дрон", item.Name, item.Quantity, 0, "Видалено");
+            Db.WarehouseDroneItems.Remove(item);
+            await Db.SaveChangesAsync();
+        }
+        await LoadCompanyData();
+    }
+
+    // ===== БОЄКОМПЛЕКТ СКЛАДУ =====
+    private async Task AddWAmmo()
+    {
+        if (string.IsNullOrWhiteSpace(newWAmmoName)) return;
+
+        var existing = wAmmos.FirstOrDefault(a =>
+            a.Name.Equals(newWAmmoName.Trim(), StringComparison.OrdinalIgnoreCase));
+
+        if (existing != null)
+        {
+            await AddWarehouseLog("Боєкомплект", existing.Name, existing.Quantity,
+                existing.Quantity + newWAmmoQty, "Додано");
+            existing.Quantity += newWAmmoQty;
+        }
+        else
+        {
+            var item = new WarehouseAmmoItem
+            {
+                CompanyId = selectedCompanyId,
+                Name = newWAmmoName.Trim(),
+                Quantity = newWAmmoQty
+            };
+            Db.WarehouseAmmoItems.Add(item);
+            await Db.SaveChangesAsync();
+            await AddWarehouseLog("Боєкомплект", item.Name, 0, newWAmmoQty, "Додано");
+        }
+
         await Db.SaveChangesAsync();
-        newAmmoName = ""; newAmmoQty = 0; showAddAmmoForm = false;
-        await LoadCrewData();
+        newWAmmoName = ""; newWAmmoQty = 0; showAddWAmmoForm = false;
+        await LoadCompanyData();
     }
 
-    private void StartAmmoEdit(AmmoItem item) { editingAmmoId = item.Id; editingAmmoName = item.Name; editingAmmoQty = item.Quantity; }
-    private void CancelAmmoEdit() => editingAmmoId = 0;
-
-    private async Task SaveAmmo(int id)
+    private void StartWAmmoEdit(WarehouseAmmoItem item)
     {
-        var item = await Db.AmmoItems.FindAsync(id);
-        if (item != null) { item.Name = editingAmmoName.Trim(); item.Quantity = editingAmmoQty; await Db.SaveChangesAsync(); }
-        editingAmmoId = 0;
-        await LoadCrewData();
+        editingWAmmoId = item.Id;
+        editingWAmmoName = item.Name;
+        editingWAmmoQty = item.Quantity;
     }
 
-    private async Task DeleteAmmo(int id)
+    private async Task SaveWAmmo(int id)
     {
-        var item = await Db.AmmoItems.FindAsync(id);
-        if (item != null) { Db.AmmoItems.Remove(item); await Db.SaveChangesAsync(); }
-        await LoadCrewData();
+        var item = await Db.WarehouseAmmoItems.FindAsync(id);
+        if (item != null)
+        {
+            await AddWarehouseLog("Боєкомплект", item.Name, item.Quantity, editingWAmmoQty, "Змінено");
+            item.Name = editingWAmmoName.Trim();
+            item.Quantity = editingWAmmoQty;
+            await Db.SaveChangesAsync();
+        }
+        editingWAmmoId = 0;
+        await LoadCompanyData();
     }
-}   
+
+    private async Task DeleteWAmmo(int id)
+    {
+        var item = await Db.WarehouseAmmoItems.FindAsync(id);
+        if (item != null)
+        {
+            await AddWarehouseLog("Боєкомплект", item.Name, item.Quantity, 0, "Видалено");
+            Db.WarehouseAmmoItems.Remove(item);
+            await Db.SaveChangesAsync();
+        }
+        await LoadCompanyData();
+    }
+
+    // ===== ЛОГУВАННЯ =====
+    private async Task AddWarehouseLog(string itemType, string itemName,
+        int qtyBefore, int qtyAfter, string action)
+    {
+        Db.WarehouseLogs.Add(new WarehouseLog
+        {
+            CompanyId = selectedCompanyId,
+            ItemType = itemType,
+            ItemName = itemName,
+            QuantityBefore = qtyBefore,
+            QuantityAfter = qtyAfter,
+            Action = action,
+            ChangedBy = currentUser,
+            ChangedAt = DateTime.Now
+        });
+        await Db.SaveChangesAsync();
+    }
+
+    // ===== НАКЛАДНІ =====
+    private void OnInvoiceFileSelected(InputFileChangeEventArgs e)
+    {
+        invoiceFile = e.File;
+    }
+
+    private async Task AddInvoice()
+    {
+        invoiceMessage = "";
+        if (string.IsNullOrWhiteSpace(newInvoiceNumber))
+        {
+            invoiceMessage = "Введіть номер накладної.";
+            invoiceSuccess = false;
+            return;
+        }
+
+        string? photoPath = null;
+        if (invoiceFile != null)
+        {
+            var uploadsDir = Path.Combine(Env.WebRootPath, "uploads", "invoices");
+            Directory.CreateDirectory(uploadsDir);
+            var ext = Path.GetExtension(invoiceFile.Name);
+            var fileName = $"{Guid.NewGuid()}{ext}";
+            var filePath = Path.Combine(uploadsDir, fileName);
+            await using var fs = new FileStream(filePath, FileMode.Create);
+            await invoiceFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(fs);
+            photoPath = $"/uploads/invoices/{fileName}";
+        }
+
+        Db.WarehouseInvoices.Add(new WarehouseInvoice
+        {
+            CompanyId = selectedCompanyId,
+            InvoiceNumber = newInvoiceNumber.Trim(),
+            Date = newInvoiceDate,
+            PhotoPath = photoPath,
+            CreatedBy = currentUser,
+            CreatedAt = DateTime.Now
+        });
+        await Db.SaveChangesAsync();
+
+        invoiceMessage = "Накладну додано.";
+        invoiceSuccess = true;
+        newInvoiceNumber = "";
+        newInvoiceDate = DateOnly.FromDateTime(DateTime.Today);
+        invoiceFile = null;
+        await LoadCompanyData();
+    }
+
+    private async Task DeleteInvoice(int id)
+    {
+        var inv = await Db.WarehouseInvoices.FindAsync(id);
+        if (inv != null)
+        {
+            if (!string.IsNullOrEmpty(inv.PhotoPath))
+            {
+                var filePath = Path.Combine(Env.WebRootPath,
+                    inv.PhotoPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+                if (File.Exists(filePath)) File.Delete(filePath);
+            }
+            Db.WarehouseInvoices.Remove(inv);
+            await Db.SaveChangesAsync();
+        }
+        await LoadCompanyData();
+    }
+
+    // ===== ФІЛЬТРИ НАКЛАДНИХ =====
+    private void ApplyInvoiceFilter()
+    {
+        var q = allInvoices.AsEnumerable();
+        if (!string.IsNullOrEmpty(invoiceFilterNumber))
+            q = q.Where(i => i.InvoiceNumber.Contains(
+                invoiceFilterNumber, StringComparison.OrdinalIgnoreCase));
+        if (invoiceFilterFrom.HasValue)
+            q = q.Where(i => i.Date >= invoiceFilterFrom.Value);
+        if (invoiceFilterTo.HasValue)
+            q = q.Where(i => i.Date <= invoiceFilterTo.Value);
+
+        q = invoiceSortField == "number"
+            ? (invoiceSortDesc ? q.OrderByDescending(i => i.InvoiceNumber)
+                               : q.OrderBy(i => i.InvoiceNumber))
+            : (invoiceSortDesc ? q.OrderByDescending(i => i.Date)
+                               : q.OrderBy(i => i.Date));
+
+        filteredInvoices = q.ToList();
+        invoicePage = 1;
+        UpdatePagedInvoices();
+    }
+
+    private void ResetInvoiceFilter()
+    {
+        invoiceFilterNumber = ""; invoiceFilterFrom = null; invoiceFilterTo = null;
+        ApplyInvoiceFilter();
+    }
+
+    private void SortInvoices(string field)
+    {
+        if (invoiceSortField == field) invoiceSortDesc = !invoiceSortDesc;
+        else { invoiceSortField = field; invoiceSortDesc = true; }
+        ApplyInvoiceFilter();
+    }
+
+    private string InvoiceSortIcon(string field) =>
+        invoiceSortField != field ? "" : (invoiceSortDesc ? " ↓" : " ↑");
+
+    private void UpdatePagedInvoices()
+    {
+        pagedInvoices = filteredInvoices
+            .Skip((invoicePage - 1) * invoicePageSize)
+            .Take(invoicePageSize).ToList();
+    }
+
+    // ===== ФІЛЬТРИ ЛОГІВ =====
+    private void ApplyLogFilter()
+    {
+        var q = allLogs.AsEnumerable();
+        if (!string.IsNullOrEmpty(logFilterType))
+            q = q.Where(l => l.ItemType == logFilterType);
+        if (logFilterFrom.HasValue)
+            q = q.Where(l => DateOnly.FromDateTime(l.ChangedAt) >= logFilterFrom.Value);
+        if (logFilterTo.HasValue)
+            q = q.Where(l => DateOnly.FromDateTime(l.ChangedAt) <= logFilterTo.Value);
+
+        q = logSortDesc
+            ? q.OrderByDescending(l => l.ChangedAt)
+            : q.OrderBy(l => l.ChangedAt);
+
+        filteredLogs = q.ToList();
+        logPage = 1;
+        UpdatePagedLogs();
+    }
+
+    private void ResetLogFilter()
+    {
+        logFilterFrom = null; logFilterTo = null; logFilterType = "";
+        ApplyLogFilter();
+    }
+
+    private void SortLogs(string field)
+    {
+        logSortDesc = !logSortDesc;
+        ApplyLogFilter();
+    }
+
+    private string LogSortIcon(string field) => logSortDesc ? " ↓" : " ↑";
+
+    private void UpdatePagedLogs()
+    {
+        pagedLogs = filteredLogs
+            .Skip((logPage - 1) * logPageSize)
+            .Take(logPageSize).ToList();
+    }
+
+    private string GetLogActionBadge(string action) => action switch
+    {
+        "Додано" => "bg-success",
+        "Змінено" => "bg-warning text-dark",
+        "Видалено" => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    // ===== ПАГІНАЦІЯ (хелпер) =====
+    private RenderFragment RenderPagination(int page, int total,
+        Action<int> onPageChange, int count) => builder =>
+    {
+        if (total <= 1) return;
+        builder.OpenElement(0, "nav");
+        builder.OpenElement(1, "ul");
+        builder.AddAttribute(2, "class", "pagination mt-2");
+
+        void AddItem(int seq, int p, string label, bool disabled, bool active)
+        {
+            builder.OpenElement(seq, "li");
+            builder.AddAttribute(seq + 1, "class",
+                $"page-item {(disabled ? "disabled" : "")} {(active ? "active" : "")}");
+            builder.OpenElement(seq + 2, "button");
+            builder.AddAttribute(seq + 3, "class", "page-link");
+            builder.AddAttribute(seq + 4, "onclick",
+                EventCallback.Factory.Create(this, () => onPageChange(p)));
+            builder.AddContent(seq + 5, label);
+            builder.CloseElement();
+            builder.CloseElement();
+        }
+
+        AddItem(10, page - 1, "‹", page == 1, false);
+        for (int i = 1; i <= total; i++)
+            AddItem(20 + i * 10, i, i.ToString(), false, i == page);
+        AddItem(200, page + 1, "›", page == total, false);
+
+        builder.CloseElement();
+        builder.OpenElement(300, "p");
+        builder.AddAttribute(301, "class", "text-muted small");
+        builder.AddContent(302, $"Всього записів: {count}. Сторінка {page} з {total}.");
+        builder.CloseElement();
+        builder.CloseElement();
+    };
+}

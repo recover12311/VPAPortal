@@ -1,7 +1,6 @@
 ﻿@page "/flights"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
-@using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
 @using VPAPortal.Data
 @using VPAPortal.Data.Models
@@ -13,24 +12,50 @@
 
 <h3 class="mb-4">Вильоти</h3>
 
-@if (crews == null)
+@if (companies == null)
 {
     <p>Завантаження...</p>
 }
 else
 {
-    <ul class="nav nav-tabs mb-4">
-        @foreach (var crew in crews)
+    @* ===== ВКЛАДКИ РОТ ===== *@
+    <ul class="nav nav-tabs mb-2">
+        @foreach (var company in companies)
         {
-            var crewId = crew.Id;
+            var cId = company.Id;
             <li class="nav-item">
-                <button class="nav-link @(selectedCrewId == crewId ? "active" : "")"
-                        @onclick="() => SelectCrew(crewId)">
-                    @crew.Name
+                <button class="nav-link @(selectedCompanyId == cId ? "active" : "")"
+                        @onclick="() => SelectCompany(cId)">
+                    @company.Name
                 </button>
             </li>
         }
     </ul>
+
+    @* ===== ВКЛАДКИ ЕКІПАЖІВ ===== *@
+    @if (crews != null && crews.Any())
+    {
+        <ul class="nav nav-tabs mb-4">
+            @foreach (var crew in crews)
+            {
+                var crewId = crew.Id;
+                <li class="nav-item">
+                    <button class="nav-link @(selectedCrewId == crewId ? "active" : "")"
+                            @onclick="() => SelectCrew(crewId)">
+                        @crew.Name
+                        <span class="badge @(crew.Type == CrewType.FPV ? "bg-danger" : "bg-primary") ms-1"
+                              style="font-size:0.65rem;">
+                            @crew.Type
+                        </span>
+                    </button>
+                </li>
+            }
+        </ul>
+    }
+    else
+    {
+        <p class="text-muted mb-4">Екіпажів для цієї роти немає.</p>
+    }
 
     @if (selectedCrew != null)
     {
@@ -40,71 +65,316 @@ else
             <input type="date" class="form-control" style="width:180px;"
                    @bind="selectedDate" @bind:after="LoadFlights" />
             <span class="text-muted small">
-                Показано вильоти за @selectedDate.ToString("dd.MM.yyyy")
+                Вильоти за @selectedDate.ToString("dd.MM.yyyy")
+            </span>
+            <span class="badge @(selectedCrew.Type == CrewType.FPV ? "bg-danger" : "bg-primary")">
+                @selectedCrew.Type
             </span>
         </div>
 
-        @* ===== ФОРМА ДОДАВАННЯ — тільки Admin/SuperAdmin ===== *@
-        <AuthorizeView Roles="SuperAdmin,Admin">
+        @* ===== ФОРМА ДОДАВАННЯ ===== *@
+        <AuthorizeView Roles="SuperAdmin,Moderator">
             <Authorized>
                 <div class="card mb-4">
                     <div class="card-header fw-bold">➕ Додати виліт</div>
                     <div class="card-body">
-                        <div class="row g-3">
-                            <div class="col-md-2">
-                                <label class="form-label">Час</label>
-                                <input type="time" class="form-control" @bind="newTime" />
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label">Координати</label>
-                                <div class="input-group">
-                                    <input class="form-control" style="max-width:80px;" @bind="newCoordPrefix" />
-                                    <input class="form-control" @bind="newCoordNumbers" placeholder="11111 11111" />
+
+                        @* ===== FPV ===== *@
+                        @if (selectedCrew.Type == CrewType.FPV)
+                        {
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-2">
+                                    <label class="form-label">Час вильоту</label>
+                                    <input type="time" class="form-control" @bind="newTime" />
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Координати вильоту</label>
+                                    <input class="form-control" @bind="newCoordinates"
+                                           placeholder="36UXB 11111 11111" />
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Безпілотник</label>
+                                    <select class="form-select" @bind="newDroneItemId">
+                                        <option value="0">— оберіть —</option>
+                                        @foreach (var d in availableDrones)
+                                        {
+                                            <option value="@d.Id">@d.Name (@d.Quantity)</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Населений пункт</label>
+                                    <input class="form-control" @bind="newSettlement"
+                                           placeholder="Назва н.п." />
                                 </div>
                             </div>
-                            <div class="col-md-2">
-                                <label class="form-label">Безпілотник</label>
-                                <select class="form-select" @bind="newDroneItemId">
-                                    <option value="0">— оберіть —</option>
-                                    @foreach (var d in availableDrones)
+                            <div class="border rounded p-3 mb-3 bg-light">
+                                <div class="fw-bold mb-2 text-danger">🎯 Ціль та боєкомплект</div>
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <label class="form-label">Ціль</label>
+                                        <select class="form-select" @bind="newTarget">
+                                            <option value="">— оберіть —</option>
+                                            @foreach (var t in TargetList.Targets)
+                                            {
+                                                <option value="@t">@t</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Боєкомплект</label>
+                                        <select class="form-select" @bind="newAmmoItemId">
+                                            <option value="0">— оберіть —</option>
+                                            @foreach (var a in availableAmmos)
+                                            {
+                                                <option value="@a.Id">@a.Name (@a.Quantity)</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Результат</label>
+                                        <select class="form-select" @bind="newResult">
+                                            <option value="@FlightResult.Уражено">Уражено</option>
+                                            <option value="@FlightResult.Знищено">Знищено</option>
+                                            <option value="@FlightResult.НеУражено">Не уражено</option>
+                                            <option value="@FlightResult.ВідпрацьованоВРайонЦілі">
+                                                Відпрацьовано в район цілі
+                                            </option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">К-сть цілей</label>
+                                        <input type="number"
+                                               class="form-control"
+                                               min="1"
+                                               @bind="newTargetCount"
+                                               @bind:event="oninput" />
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        @* ===== БОМБЕР ===== *@
+                        @if (selectedCrew.Type == CrewType.Бомбер)
+                        {
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-3">
+                                    <label class="form-label">Безпілотник</label>
+                                    @if (vampireDrone != null)
                                     {
-                                        <option value="@d.Id">@d.Name (@d.Quantity)</option>
+                                        <div class="form-control bg-light">
+                                            БПАК Vampire
+                                            <span class="badge @(vampireDrone.Quantity > 0 ? "bg-success" : "bg-danger") ms-2">
+                                                @vampireDrone.Quantity шт.
+                                            </span>
+                                        </div>
                                     }
-                                </select>
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label">Боєкомплект</label>
-                                <select class="form-select" @bind="newAmmoItemId">
-                                    <option value="0">— оберіть —</option>
-                                    @foreach (var a in availableAmmos)
+                                    else
                                     {
-                                        <option value="@a.Id">@a.Name (@a.Quantity)</option>
+                                        <div class="form-control bg-light text-danger">
+                                            БПАК Vampire
+                                        </div>
                                     }
-                                </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Тип місії</label>
+                                    <select class="form-select" @bind="newMissionType">
+                                        <option value="attack">Ударна</option>
+                                        <option value="delivery">Доставка</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Повернувся?</label>
+                                    <select class="form-select" value="@(newDroneReturned ? "true" : "false")"
+                                            @onchange='e => newDroneReturned = e.Value?.ToString() == "true"'>
+                                        <option value="true">Так</option>
+                                        <option value="false">Ні (збитий)</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div class="col-md-2">
-                                <label class="form-label">Результат</label>
-                                <select class="form-select" @bind="newResult">
-                                    <option value="@FlightResult.Уражено">Уражено</option>
-                                    <option value="@FlightResult.Знищено">Знищено</option>
-                                    <option value="@FlightResult.НеУражено">Не уражено</option>
-                                    <option value="@FlightResult.ВідпрацьованоВРайонЦілі">Відпрацьовано в район цілі</option>
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label">Населений пункт</label>
-                                <input class="form-control" @bind="newSettlement" placeholder="Назва н.п." />
-                            </div>
-                        </div>
+
+                            @* Ударна місія *@
+                            @if (newMissionType == "attack")
+                            {
+                                <div class="border rounded p-3 mb-3 bg-light">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div class="fw-bold text-primary">💣 Скиди (до 4)</div>
+                                        @if (newDrops.Count < 4)
+                                        {
+                                            <button class="btn btn-sm btn-outline-primary"
+                                                    @onclick="AddDrop">
+                                                + Додати скид
+                                            </button>
+                                        }
+                                    </div>
+                                    @for (int i = 0; i < newDrops.Count; i++)
+                                    {
+                                        var idx = i;
+                                        <div class="border rounded p-3 mb-3 bg-white">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <div class="fw-bold text-muted">Скид #@(idx + 1)</div>
+                                                @if (newDrops.Count > 1)
+                                                {
+                                                    <button class="btn btn-sm btn-outline-danger"
+                                                            @onclick="() => RemoveDrop(idx)">
+                                                        ✕ Видалити
+                                                    </button>
+                                                }
+                                            </div>
+                                            <div class="row g-3">
+                                                <div class="col-md-2">
+                                                    <label class="form-label small">Час</label>
+                                                    <input type="time"
+                                                           class="form-control form-control-sm"
+                                                           @bind="newDrops[idx].DropTime" />
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small">Координати</label>
+                                                    <input class="form-control form-control-sm"
+                                                           @bind="newDrops[idx].Coordinates"
+                                                           placeholder="36UXB 11111 11111" />
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small">
+                                                        Населений пункт
+                                                    </label>
+                                                    <input class="form-control form-control-sm"
+                                                           @bind="newDrops[idx].Settlement"
+                                                           placeholder="Н.П." />
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="form-label small">Ціль</label>
+                                                    <select class="form-select form-select-sm"
+                                                            @bind="newDrops[idx].Target">
+                                                        <option value="">— оберіть —</option>
+                                                        @foreach (var t in TargetList.Targets)
+                                                        {
+                                                            <option value="@t">@t</option>
+                                                        }
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="form-label small">Боєкомплект</label>
+                                                    <select class="form-select form-select-sm"
+                                                            @bind="newDrops[idx].AmmoItemId">
+                                                        <option value="0">— оберіть —</option>
+                                                        @foreach (var a in availableAmmos)
+                                                        {
+                                                            <option value="@a.Id">
+                                                                @a.Name (@a.Quantity)
+                                                            </option>
+                                                        }
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="form-label small">Результат</label>
+                                                    <select class="form-select form-select-sm"
+                                                            @bind="newDrops[idx].Result">
+                                                        <option value="@FlightResult.Уражено">
+                                                            Уражено
+                                                        </option>
+                                                        <option value="@FlightResult.Знищено">
+                                                            Знищено
+                                                        </option>
+                                                        <option value="@FlightResult.НеУражено">
+                                                            Не уражено
+                                                        </option>
+                                                        <option value="@FlightResult.ВідпрацьованоВРайонЦілі">
+                                                            Відпрацьовано в район цілі
+                                                        </option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-1">
+                                                    <label class="form-label small">К-сть цілей</label>
+                                                    <input type="number"
+                                                           class="form-control form-control-sm"
+                                                           min="0"
+                                                           @bind="newDrops[idx].TargetCount" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+
+                            @* Доставка *@
+                            @if (newMissionType == "delivery")
+                            {
+                                <div class="border rounded p-3 mb-3 bg-light">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div class="fw-bold text-info">📦 Доставки</div>
+                                        @if (newDrops.Count < 4)
+                                        {
+                                            <button class="btn btn-sm btn-outline-info"
+                                                    @onclick="AddDrop">
+                                                + Додати доставку
+                                            </button>
+                                        }
+                                    </div>
+                                    @for (int i = 0; i < newDrops.Count; i++)
+                                    {
+                                        var idx = i;
+                                        <div class="border rounded p-3 mb-3 bg-white">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <div class="fw-bold text-muted">
+                                                    Доставка #@(idx + 1)
+                                                </div>
+                                                @if (newDrops.Count > 1)
+                                                {
+                                                    <button class="btn btn-sm btn-outline-danger"
+                                                            @onclick="() => RemoveDrop(idx)">
+                                                        ✕ Видалити
+                                                    </button>
+                                                }
+                                            </div>
+                                            <div class="row g-3">
+                                                <div class="col-md-2">
+                                                    <label class="form-label small">Час доставки</label>
+                                                    <input type="time"
+                                                           class="form-control form-control-sm"
+                                                           @bind="newDrops[idx].DeliveryTime" />
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small">Координати</label>
+                                                    <input class="form-control form-control-sm"
+                                                           @bind="newDrops[idx].Coordinates"
+                                                           placeholder="36UXB 11111 11111" />
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small">
+                                                        Населений пункт
+                                                    </label>
+                                                    <input class="form-control form-control-sm"
+                                                           @bind="newDrops[idx].Settlement"
+                                                           placeholder="Н.П." />
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="form-label small">Результат</label>
+                                                    <select class="form-select form-select-sm"
+                                                            @bind="newDrops[idx].Result">
+                                                        <option value="@FlightResult.Доставлено">
+                                                            Доставлено
+                                                        </option>
+                                                        <option value="@FlightResult.НеДоставлено">
+                                                            Не доставлено
+                                                        </option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        }
 
                         @if (!string.IsNullOrEmpty(addFlightMessage))
                         {
-                            <div class="alert @(addFlightSuccess ? "alert-success" : "alert-danger") mt-3">
+                            <div class="alert @(addFlightSuccess ? "alert-success" : "alert-danger")">
                                 @addFlightMessage
                             </div>
                         }
 
-                        <button class="btn btn-primary mt-3" @onclick="AddFlight">
+                        <button class="btn btn-primary" @onclick="AddFlight">
                             ✈ Додати виліт
                         </button>
                     </div>
@@ -130,10 +400,17 @@ else
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Координати</label>
-                                    <div class="input-group">
-                                        <input class="form-control" style="max-width:80px;" @bind="editCoordPrefix" />
-                                        <input class="form-control" @bind="editCoordNumbers" placeholder="11111 11111" />
-                                    </div>
+                                    <input class="form-control" @bind="editCoordinates" />
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Ціль</label>
+                                    <select class="form-select" @bind="editTarget">
+                                        <option value="">— оберіть —</option>
+                                        @foreach (var t in TargetList.Targets)
+                                        {
+                                            <option value="@t">@t</option>
+                                        }
+                                    </select>
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label">Результат</label>
@@ -141,7 +418,13 @@ else
                                         <option value="@FlightResult.Уражено">Уражено</option>
                                         <option value="@FlightResult.Знищено">Знищено</option>
                                         <option value="@FlightResult.НеУражено">Не уражено</option>
-                                        <option value="@FlightResult.ВідпрацьованоВРайонЦілі">Відпрацьовано в район цілі</option>
+                                        <option value="@FlightResult.ВідпрацьованоВРайонЦілі">
+                                            Відпрацьовано в район цілі
+                                        </option>
+                                        <option value="@FlightResult.Доставлено">Доставлено</option>
+                                        <option value="@FlightResult.НеДоставлено">
+                                            Не доставлено
+                                        </option>
                                     </select>
                                 </div>
                                 <div class="col-md-4">
@@ -157,8 +440,12 @@ else
                             }
                         </div>
                         <div class="modal-footer">
-                            <button class="btn btn-secondary" @onclick="CloseEditModal">Скасувати</button>
-                            <button class="btn btn-primary" @onclick="SaveEditFlight">Зберегти</button>
+                            <button class="btn btn-secondary" @onclick="CloseEditModal">
+                                Скасувати
+                            </button>
+                            <button class="btn btn-primary" @onclick="SaveEditFlight">
+                                Зберегти
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -175,26 +462,34 @@ else
                     <option value="Уражено">Уражено</option>
                     <option value="Знищено">Знищено</option>
                     <option value="НеУражено">Не уражено</option>
-                    <option value="ВідпрацьованоВРайонЦілі">Відпрацьовано в район цілі</option>
+                    <option value="ВідпрацьованоВРайонЦілі">
+                        Відпрацьовано в район цілі
+                    </option>
+                    <option value="Доставлено">Доставлено</option>
+                    <option value="НеДоставлено">Не доставлено</option>
                 </select>
             </div>
             <div>
                 <label class="form-label mb-1 small">Н.П.</label>
                 <input class="form-control form-control-sm" style="width:160px;"
-                       @bind="filterSettlement" @bind:after="ApplyFilter" placeholder="Пошук..." />
+                       @bind="filterSettlement" @bind:after="ApplyFilter"
+                       placeholder="Пошук..." />
             </div>
             <div>
-                <label class="form-label mb-1 small">Безпілотник</label>
+                <label class="form-label mb-1 small">Ціль</label>
                 <select class="form-select form-select-sm" style="width:180px;"
-                        @bind="filterDroneName" @bind:after="ApplyFilter">
+                        @bind="filterTarget" @bind:after="ApplyFilter">
                     <option value="">— всі —</option>
-                    @foreach (var name in allDroneNames)
+                    @foreach (var t in TargetList.Targets)
                     {
-                        <option value="@name">@name</option>
+                        <option value="@t">@t</option>
                     }
                 </select>
             </div>
-            <button class="btn btn-sm btn-outline-secondary" @onclick="ResetFilter">✕ Скинути</button>
+            <button class="btn btn-sm btn-outline-secondary"
+                    @onclick="ResetFilter">
+                ✕ Скинути
+            </button>
         </div>
 
         @* ===== ТАБЛИЦЯ ===== *@
@@ -211,36 +506,145 @@ else
                         <th>Час</th>
                         <th>Координати</th>
                         <th>Безпілотник</th>
-                        <th>Боєкомплект</th>
+                        <th>Деталі вильоту</th>
                         <th>Результат</th>
                         <th>Н.П.</th>
                         <th>Додав</th>
-                        <AuthorizeView Roles="SuperAdmin,Admin">
+                        <AuthorizeView Roles="SuperAdmin,Moderator">
                             <Authorized>
-                                <th style="width:100px;">Дії</th>
+                                <th style="width:90px;">Дії</th>
                             </Authorized>
                         </AuthorizeView>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var item in pagedFlights.Select((f, i) => new { Flight = f, Index = i }))
+                    @foreach (var item in pagedFlights.Select(
+                            (f, i) => new { Flight = f, Index = i }))
                     {
                         var flightId = item.Flight.Id;
                         var rowNum = (currentPage - 1) * pageSize + item.Index + 1;
                         <tr>
                             <td>@rowNum</td>
                             <td>@item.Flight.Time.ToString("HH:mm")</td>
-                            <td>@item.Flight.Coordinates</td>
-                            <td>@item.Flight.DroneItem?.Name</td>
-                            <td>@item.Flight.AmmoItem?.Name</td>
+
                             <td>
-                                <span class="badge @GetResultBadge(item.Flight.Result)">
-                                    @GetResultLabel(item.Flight.Result)
-                                </span>
+                                @if (string.IsNullOrEmpty(item.Flight.Coordinates) && item.Flight.Drops.Any())
+                                {
+                                    @item.Flight.Drops.First().Coordinates
+                                }
+                                else
+                                {
+                                    @item.Flight.Coordinates
+                                }
                             </td>
+
+                            <td>
+                                @if (item.Flight.DroneItem != null)
+                                {
+                                    @item.Flight.DroneItem.Name
+                                }
+                                else if (selectedCrew?.Type == CrewType.Бомбер)
+                                {
+                                    <span>БПАК Vampire</span>
+                                }
+                            </td>
+
+                            @* ✅ ДЕТАЛИ ВЫЛЕТА *@
+                            <td>
+                                @if (!item.Flight.Drops.Any())
+                                {
+                                    <small>
+                                        <div><strong>Ціль:</strong> @item.Flight.Target</div>
+                                    </small>
+                                }
+                                else if (item.Flight.Drops.All(d => d.IsDelivery))
+                                {
+                                    <small>
+                                        @foreach (var drop in item.Flight.Drops)
+                                        {
+                                            <div>
+                                                📦 @drop.Coordinates
+
+                                                @if (drop.DeliveryTime.HasValue)
+                                                {
+                                                    <span class="text-muted">
+                                                        (@drop.DeliveryTime.Value.ToString("HH:mm"))
+                                                    </span>
+                                                }
+
+                                                <span class="text-muted"> — </span>
+                                                @GetResultLabel(drop.Result)
+
+                                                @if (!string.IsNullOrEmpty(drop.Settlement))
+                                                {
+                                                    <span class="text-muted">[@drop.Settlement]</span>
+                                                }
+                                            </div>
+                                        }
+                                    </small>
+                                }
+                                else
+                                {
+                                    <small>
+                                        @foreach (var drop in item.Flight.Drops)
+                                        {
+                                            <div>
+                                                💣
+
+                                                @if (drop.DeliveryTime.HasValue)
+                                                {
+                                                    <span>@drop.DeliveryTime.Value.ToString("HH:mm")</span>
+                                                    <span class="text-muted"> — </span>
+                                                }
+
+                                                @drop.Coordinates
+
+                                                @if (!string.IsNullOrEmpty(drop.Target))
+                                                {
+                                                    <span class="text-muted"> → @drop.Target</span>
+                                                }
+
+                                                — @drop.AmmoItem?.Name
+
+                                                @if (drop.TargetCount > 0)
+                                                {
+                                                    <span class="text-muted">(@drop.TargetCount шт.)</span>
+                                                }
+
+                                                <span class="text-muted"> — </span>
+
+                                                <span class="badge @GetResultBadge(drop.Result) ms-1">
+                                                    @GetResultLabel(drop.Result)
+                                                </span>
+
+                                                @if (!string.IsNullOrEmpty(drop.Settlement))
+                                                {
+                                                    <span class="text-muted">[@drop.Settlement]</span>
+                                                }
+                                            </div>
+                                        }
+                                    </small>
+                                }
+                            </td>
+
+                            @* ✅ РЕЗУЛЬТАТ *@
+                            <td>
+                                @if (selectedCrew?.Type == CrewType.Бомбер)
+                                {
+                                    <span class="badge @(item.Flight.DroneReturned ? "bg-success" : "bg-danger")">
+                                        @(item.Flight.DroneReturned ? "↩ повернувся" : "✖ не повернувся")
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span>@GetResultLabel(item.Flight.Result)</span>
+                                }
+                            </td>
+
                             <td>@item.Flight.Settlement</td>
                             <td class="text-muted small">@item.Flight.CreatedBy</td>
-                            <AuthorizeView Roles="SuperAdmin,Admin">
+
+                            <AuthorizeView Roles="SuperAdmin,Moderator">
                                 <Authorized>
                                     <td>
                                         <button class="btn btn-xs btn-warning me-1"
@@ -268,10 +672,12 @@ else
                         </li>
                         @for (int p = 1; p <= totalPages; p++)
                         {
-                            var pageNum = p;
-                            var isActive = currentPage == pageNum;
-                            <li class="page-item @(isActive ? "active" : "")">
-                                <button class="page-link" @onclick="() => GoToPage(pageNum)">@pageNum</button>
+                            var pn = p;
+                            <li class="page-item @(currentPage == pn ? "active" : "")">
+                                <button class="page-link"
+                                        @onclick="() => GoToPage(pn)">
+                                    @pn
+                                </button>
                             </li>
                         }
                         <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
@@ -296,32 +702,45 @@ else
 </style>
 
 @code {
+    private List<Company>? companies;
+    private int selectedCompanyId;
     private List<Crew>? crews;
     private int selectedCrewId;
     private Crew? selectedCrew;
 
     private DateOnly selectedDate = DateOnly.FromDateTime(DateTime.Today);
-
     private List<DroneItem> availableDrones = new();
     private List<AmmoItem> availableAmmos = new();
+    private DroneItem? vampireDrone;
 
-    // Форма додавання
+    // Форма FPV
     private TimeOnly newTime = TimeOnly.FromDateTime(DateTime.Now);
-    private string newCoordPrefix = "36UXB";
-    private string newCoordNumbers = "";
+    private string newCoordinates = "";
+    private string newTarget = "";
     private int newDroneItemId = 0;
     private int newAmmoItemId = 0;
+    private int _newTargetCount = 1;
+    private int newTargetCount
+    {
+        get => _newTargetCount;
+        set => _newTargetCount = value < 1 ? 1 : value;
+    }
     private FlightResult newResult = FlightResult.Уражено;
     private string newSettlement = "";
     private string addFlightMessage = "";
     private bool addFlightSuccess = false;
 
-    // Модалка редагування
+    // Форма Бомбер
+    private string newMissionType = "attack";
+    private bool newDroneReturned = true;
+    private List<DropFormModel> newDrops = new() { new DropFormModel() };
+
+    // Редагування
     private bool showEditModal = false;
     private int editingFlightId = 0;
     private TimeOnly editTime;
-    private string editCoordPrefix = "36UXB";
-    private string editCoordNumbers = "";
+    private string editCoordinates = "";
+    private string editTarget = "";
     private FlightResult editResult;
     private string editSettlement = "";
     private string editFlightMessage = "";
@@ -335,32 +754,66 @@ else
     // Фільтри
     private string filterResult = "";
     private string filterSettlement = "";
-    private string filterDroneName = "";
-    private List<string> allDroneNames = new();
+    private string filterTarget = "";
 
     // Пагінація
     private int currentPage = 1;
     private int pageSize = 15;
-    private int totalPages => (int)Math.Ceiling(filteredFlights.Count / (double)pageSize);
+    private int totalPages =>
+        (int)Math.Ceiling(filteredFlights.Count / (double)pageSize);
+
+    private class DropFormModel
+    {
+        public string Coordinates { get; set; } = "";
+        public string Target { get; set; } = "";
+        public int AmmoItemId { get; set; } = 0;
+        public FlightResult Result { get; set; } = FlightResult.Уражено;
+        public int TargetCount { get; set; } = 1;
+        public TimeOnly DropTime { get; set; } = TimeOnly.FromDateTime(DateTime.Now);
+        public TimeOnly DeliveryTime { get; set; } = TimeOnly.FromDateTime(DateTime.Now);
+        public string Settlement { get; set; } = "";
+    }
 
     protected override async Task OnInitializedAsync()
     {
-        crews = await Db.Crews.OrderBy(c => c.SortOrder).ToListAsync();
+        companies = await Db.Companies.OrderBy(c => c.SortOrder).ToListAsync();
+        if (companies.Any())
+        {
+            selectedCompanyId = companies.First().Id;
+            await LoadCrews();
+        }
+    }
+
+    private async Task SelectCompany(int id)
+    {
+        selectedCompanyId = id;
+        selectedCrewId = 0; selectedCrew = null;
+        await LoadCrews();
+    }
+
+    private async Task LoadCrews()
+    {
+        crews = await Db.Crews
+            .Where(c => c.CompanyId == selectedCompanyId)
+            .OrderBy(c => c.SortOrder).ToListAsync();
+
         if (crews.Any())
         {
             selectedCrewId = crews.First().Id;
             selectedCrew = crews.First();
             await LoadCrewData();
         }
+        else { selectedCrew = null; vampireDrone = null; }
     }
 
-    private async Task SelectCrew(int crewId)
+    private async Task SelectCrew(int id)
     {
-        selectedCrewId = crewId;
-        selectedCrew = crews?.FirstOrDefault(c => c.Id == crewId);
+        selectedCrewId = id;
+        selectedCrew = crews?.FirstOrDefault(c => c.Id == id);
         currentPage = 1;
-        filterResult = ""; filterSettlement = ""; filterDroneName = "";
+        filterResult = ""; filterSettlement = ""; filterTarget = "";
         await LoadCrewData();
+        ResetForm();
     }
 
     private async Task LoadCrewData()
@@ -373,9 +826,17 @@ else
             .Where(a => a.CrewId == selectedCrewId && a.Quantity > 0)
             .OrderBy(a => a.Name).ToListAsync();
 
-        allDroneNames = await Db.DroneItems
-            .Where(d => d.CrewId == selectedCrewId)
-            .Select(d => d.Name).Distinct().ToListAsync();
+        if (selectedCrew?.Type == CrewType.Бомбер)
+        {
+            vampireDrone = await Db.DroneItems
+                .FirstOrDefaultAsync(d => d.CrewId == selectedCrewId &&
+                                          d.Name == "БПАК Vampire");
+            newDroneItemId = vampireDrone?.Id ?? 0;
+        }
+        else
+        {
+            vampireDrone = null;
+        }
 
         await LoadFlights();
     }
@@ -385,7 +846,7 @@ else
         allFlights = await Db.Flights
             .Where(f => f.CrewId == selectedCrewId && f.Date == selectedDate)
             .Include(f => f.DroneItem)
-            .Include(f => f.AmmoItem)
+            .Include(f => f.Drops).ThenInclude(d => d.AmmoItem)
             .OrderBy(f => f.Time)
             .ToListAsync();
         ApplyFilter();
@@ -395,10 +856,18 @@ else
     {
         filteredFlights = allFlights.Where(f =>
         {
-            if (!string.IsNullOrEmpty(filterResult) && f.Result.ToString() != filterResult) return false;
+            if (!string.IsNullOrEmpty(filterResult) &&
+                f.Result.ToString() != filterResult) return false;
             if (!string.IsNullOrEmpty(filterSettlement) &&
-                !f.Settlement.Contains(filterSettlement, StringComparison.OrdinalIgnoreCase)) return false;
-            if (!string.IsNullOrEmpty(filterDroneName) && f.DroneItem?.Name != filterDroneName) return false;
+                !f.Settlement.Contains(filterSettlement,
+                    StringComparison.OrdinalIgnoreCase)) return false;
+            if (!string.IsNullOrEmpty(filterTarget))
+            {
+                var allTargets = f.Drops.Any()
+                    ? f.Drops.Select(d => d.Target).ToList()
+                    : new List<string> { f.Target };
+                if (!allTargets.Any(t => t == filterTarget)) return false;
+            }
             return true;
         }).ToList();
         currentPage = 1;
@@ -407,67 +876,186 @@ else
 
     private void ResetFilter()
     {
-        filterResult = ""; filterSettlement = ""; filterDroneName = "";
+        filterResult = ""; filterSettlement = ""; filterTarget = "";
         ApplyFilter();
     }
 
     private void UpdatePagedFlights()
     {
-        pagedFlights = filteredFlights.Skip((currentPage - 1) * pageSize).Take(pageSize);
+        pagedFlights = filteredFlights
+            .Skip((currentPage - 1) * pageSize).Take(pageSize);
     }
+
+    private void ResetForm()
+    {
+        newCoordinates = ""; newTarget = ""; newAmmoItemId = 0;
+        newTargetCount = 1; newResult = FlightResult.Уражено;
+        newSettlement = ""; newMissionType = "attack";
+        newDroneReturned = true;
+        newDrops = new() { new DropFormModel() };
+        newTime = TimeOnly.FromDateTime(DateTime.Now);
+        addFlightMessage = "";
+
+        if (selectedCrew?.Type == CrewType.FPV)
+            newDroneItemId = 0;
+        else
+            newDroneItemId = vampireDrone?.Id ?? 0;
+    }
+
+    private void AddDrop()
+    {
+        if (newDrops.Count < 4) newDrops.Add(new DropFormModel());
+    }
+
+    private void RemoveDrop(int idx)
+    {
+        if (newDrops.Count > 1) newDrops.RemoveAt(idx);
+    }
+
+    private string Clean(string? value)
+        => string.IsNullOrWhiteSpace(value) ? "" : value.Trim();
 
     private async Task AddFlight()
     {
         addFlightMessage = "";
 
-        if (newDroneItemId == 0) { addFlightMessage = "Оберіть безпілотник."; addFlightSuccess = false; return; }
-        if (newAmmoItemId == 0) { addFlightMessage = "Оберіть боєкомплект."; addFlightSuccess = false; return; }
-        if (string.IsNullOrWhiteSpace(newSettlement)) { addFlightMessage = "Введіть населений пункт."; addFlightSuccess = false; return; }
-
-        var drone = await Db.DroneItems.FindAsync(newDroneItemId);
-        var ammo = await Db.AmmoItems.FindAsync(newAmmoItemId);
-
-        if (drone == null || drone.Quantity <= 0) { addFlightMessage = "Безпілотник недоступний на складі."; addFlightSuccess = false; return; }
-        if (ammo == null || ammo.Quantity <= 0) { addFlightMessage = "Боєкомплект недоступний на складі."; addFlightSuccess = false; return; }
-
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var currentUser = authState.User.Identity?.Name ?? "";
-
-        drone.Quantity -= 1;
-        ammo.Quantity -= 1;
-
-        Db.Flights.Add(new Flight
+        try
         {
-            CrewId = selectedCrewId,
-            Date = selectedDate,
-            Time = newTime,
-            Coordinates = $"{newCoordPrefix} {newCoordNumbers}".Trim(),
-            DroneItemId = newDroneItemId,
-            AmmoItemId = newAmmoItemId,
-            Result = newResult,
-            Settlement = newSettlement.Trim(),
-            CreatedBy = currentUser,
-            CreatedAt = DateTime.Now
-        });
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User.Identity?.Name ?? "";
 
-        await Db.SaveChangesAsync();
+            if (selectedCrew == null)
+                return;
 
-        addFlightMessage = "Виліт успішно додано. Списано 1 безпілотник та 1 боєкомплект.";
-        addFlightSuccess = true;
-        newCoordNumbers = ""; newDroneItemId = 0; newAmmoItemId = 0;
-        newSettlement = ""; newTime = TimeOnly.FromDateTime(DateTime.Now);
+            var flight = new Flight
+            {
+                CrewId = selectedCrewId,
+                Date = selectedDate,
+                Time = newTime,
+                Coordinates = Clean(newCoordinates),
+                Target = Clean(newTarget),
+                Settlement = Clean(newSettlement),
+                DroneItemId = selectedCrew.Type == CrewType.Бомбер
+                    ? vampireDrone?.Id
+                    : newDroneItemId,
+                Result = newResult,
+                TargetCount = newTargetCount,
+                DroneReturned = selectedCrew.Type == CrewType.Бомбер && newDroneReturned,
+                CreatedBy = user,
+                CreatedAt = DateTime.Now
+            };
 
-        await LoadCrewData();
+            // ================= FPV =================
+            if (selectedCrew.Type == CrewType.FPV)
+            {
+                if (newDroneItemId == 0)
+                    throw new Exception("Оберіть безпілотник");
+
+                if (newAmmoItemId == 0)
+                    throw new Exception("Оберіть боєкомплект");
+
+                if (string.IsNullOrWhiteSpace(newSettlement))
+                    throw new Exception("Введіть населений пункт");
+
+                var drone = await Db.DroneItems.FindAsync(newDroneItemId);
+                var ammo = await Db.AmmoItems.FindAsync(newAmmoItemId);
+
+                if (drone == null || drone.Quantity <= 0)
+                    throw new Exception("Немає дронів");
+
+                if (ammo == null || ammo.Quantity <= 0)
+                    throw new Exception("Немає боєкомплекту");
+
+                drone.Quantity--;
+                ammo.Quantity--;
+
+                flight.Drops.Add(new FlightDrop
+                {
+                    Coordinates = Clean(newCoordinates),
+                    Target = Clean(newTarget),
+                    AmmoItemId = newAmmoItemId,
+                    Result = newResult,
+                    TargetCount = newTargetCount,
+                    Settlement = Clean(newSettlement), // ✅ FIX
+                    IsDelivery = false
+                });
+            }
+
+            // ================= БОМБЕР =================
+            if (selectedCrew.Type == CrewType.Бомбер)
+            {
+                if (newMissionType == "attack")
+                {
+                    foreach (var drop in newDrops.Where(d => !string.IsNullOrWhiteSpace(d.Coordinates)))
+                    {
+                        var ammo = await Db.AmmoItems.FindAsync(drop.AmmoItemId);
+
+                        if (ammo == null || ammo.Quantity <= 0)
+                            throw new Exception("Боєкомплект закінчився");
+
+                        ammo.Quantity--;
+
+                        flight.Drops.Add(new FlightDrop
+                        {
+                            Coordinates = Clean(drop.Coordinates),
+                            Target = Clean(drop.Target),
+                            AmmoItemId = drop.AmmoItemId,
+                            Result = drop.Result,
+                            TargetCount = drop.TargetCount < 1 ? 1 : drop.TargetCount,
+                            Settlement = Clean(drop.Settlement), // ✅ FIX
+                            DeliveryTime = drop.DropTime,
+                            IsDelivery = false
+                        });
+                    }
+                }
+                else // delivery
+                {
+                    foreach (var drop in newDrops.Where(d => !string.IsNullOrWhiteSpace(d.Coordinates)))
+                    {
+                        flight.Drops.Add(new FlightDrop
+                        {
+                            Coordinates = Clean(drop.Coordinates),
+                            Target = "",
+                            AmmoItemId = null,
+                            Result = drop.Result,
+                            TargetCount = 0,
+                            Settlement = Clean(drop.Settlement), // ✅ FIX
+                            DeliveryTime = drop.DeliveryTime,
+                            IsDelivery = true
+                        });
+                    }
+                }
+
+                // ✅ FIX: если нет settlement в flight — берем из drop
+                if (string.IsNullOrWhiteSpace(flight.Settlement))
+                {
+                    flight.Settlement = flight.Drops
+                        .FirstOrDefault(d => !string.IsNullOrWhiteSpace(d.Settlement))
+                        ?.Settlement ?? "";
+                }
+            }
+
+            Db.Flights.Add(flight);
+            await Db.SaveChangesAsync();
+
+            addFlightMessage = "Виліт додано";
+            addFlightSuccess = true;
+
+            await LoadCrewData();
+            ResetForm();
+        }
+        catch (Exception ex)
+        {
+            addFlightMessage = ex.Message;
+            addFlightSuccess = false;
+        }
     }
 
-    // ===== РЕДАГУВАННЯ =====
     private void OpenEditModal(Flight flight)
     {
         editingFlightId = flight.Id;
-        // Розбиваємо координати на префікс та числа
-        var parts = flight.Coordinates.Split(' ', 2);
-        editCoordPrefix = parts.Length > 0 ? parts[0] : "36UXB";
-        editCoordNumbers = parts.Length > 1 ? parts[1] : "";
+        editCoordinates = flight.Coordinates;
+        editTarget = flight.Target;
         editTime = flight.Time;
         editResult = flight.Result;
         editSettlement = flight.Settlement;
@@ -489,23 +1077,25 @@ else
         if (string.IsNullOrWhiteSpace(editSettlement))
         {
             editFlightMessage = "Введіть населений пункт.";
-            editFlightSuccess = false;
-            return;
+            editFlightSuccess = false; return;
         }
 
         var flight = await Db.Flights.FindAsync(editingFlightId);
-        if (flight == null) { editFlightMessage = "Виліт не знайдено."; editFlightSuccess = false; return; }
+        if (flight == null)
+        {
+            editFlightMessage = "Виліт не знайдено.";
+            editFlightSuccess = false; return;
+        }
 
         flight.Time = editTime;
-        flight.Coordinates = $"{editCoordPrefix} {editCoordNumbers}".Trim();
+        flight.Coordinates = editCoordinates.Trim();
+        flight.Target = editTarget;
         flight.Result = editResult;
         flight.Settlement = editSettlement.Trim();
 
         await Db.SaveChangesAsync();
-
         editFlightMessage = "Збережено.";
         editFlightSuccess = true;
-
         await LoadFlights();
     }
 
@@ -513,22 +1103,36 @@ else
     {
         var flight = await Db.Flights
             .Include(f => f.DroneItem)
-            .Include(f => f.AmmoItem)
+            .Include(f => f.Drops).ThenInclude(d => d.AmmoItem)
             .FirstOrDefaultAsync(f => f.Id == flightId);
 
         if (flight != null)
         {
-            if (flight.DroneItem != null) flight.DroneItem.Quantity += 1;
-            if (flight.AmmoItem != null) flight.AmmoItem.Quantity += 1;
+            // FPV — повертаємо дрон тільки якщо не повернувся
+            // Бомбер (Vampire) — НЕ повертаємо, він не списувався
+            if (selectedCrew?.Type == CrewType.FPV &&
+                !flight.DroneReturned && flight.DroneItem != null)
+            {
+                flight.DroneItem.Quantity += 1;
+            }
+
+            // Повертаємо боєкомплект для ударних скидів
+            foreach (var drop in flight.Drops.Where(d => !d.IsDelivery))
+                if (drop.AmmoItem != null) drop.AmmoItem.Quantity += 1;
+
             Db.Flights.Remove(flight);
             await Db.SaveChangesAsync();
             await LoadCrewData();
+            ResetForm();
         }
     }
 
     private void GoToPage(int page)
     {
-        if (page >= 1 && page <= totalPages) { currentPage = page; UpdatePagedFlights(); }
+        if (page >= 1 && page <= totalPages)
+        {
+            currentPage = page; UpdatePagedFlights();
+        }
     }
 
     private void PrevPage() => GoToPage(currentPage - 1);
@@ -540,6 +1144,8 @@ else
         FlightResult.Знищено => "Знищено",
         FlightResult.НеУражено => "Не уражено",
         FlightResult.ВідпрацьованоВРайонЦілі => "Відпрацьовано в район цілі",
+        FlightResult.Доставлено => "Доставлено",
+        FlightResult.НеДоставлено => "Не доставлено",
         _ => ""
     };
 
@@ -549,6 +1155,8 @@ else
         FlightResult.Знищено => "bg-success",
         FlightResult.НеУражено => "bg-danger",
         FlightResult.ВідпрацьованоВРайонЦілі => "bg-secondary",
+        FlightResult.Доставлено => "bg-info text-dark",
+        FlightResult.НеДоставлено => "bg-dark",
         _ => "bg-light"
     };
 }

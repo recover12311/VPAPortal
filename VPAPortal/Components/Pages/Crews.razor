@@ -1,0 +1,1176 @@
+﻿@page "/crews"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using VPAPortal.Data
+@using VPAPortal.Data.Models
+@attribute [Authorize]
+@inject ApplicationDbContext Db
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Екіпажі</PageTitle>
+
+<h3 class="mb-4">Екіпажі</h3>
+
+@if (companies == null)
+{
+    <p>Завантаження...</p>
+}
+else
+{
+    @* ===== ВКЛАДКИ РОТ ===== *@
+    <ul class="nav nav-tabs mb-2">
+        @foreach (var company in companies)
+        {
+            var cId = company.Id;
+            <li class="nav-item">
+                <button class="nav-link @(selectedCompanyId == cId ? "active" : "")"
+                        @onclick="() => SelectCompany(cId)">
+                    @company.Name
+                </button>
+            </li>
+        }
+    </ul>
+
+    @if (selectedCompany != null)
+    {
+        @* ===== ВКЛАДКИ ЕКІПАЖІВ ===== *@
+        <div class="d-flex align-items-center flex-wrap gap-2 mb-4"
+             style="border-bottom: 1px solid #dee2e6; padding-bottom: 0;">
+            <ul class="nav nav-tabs flex-nowrap mb-0" style="border-bottom:none;">
+                @foreach (var crew in crews)
+                {
+                    var crewId = crew.Id;
+                    <li class="nav-item">
+                        <button class="nav-link @(selectedCrewId == crewId ? "active" : "")"
+                                @onclick="() => SelectCrew(crewId)">
+                            @crew.Name
+                            <span class="badge @(crew.Type == CrewType.FPV ? "bg-danger" : "bg-primary") ms-1"
+                                  style="font-size:0.65rem;">
+                                @crew.Type
+                            </span>
+                        </button>
+                    </li>
+                }
+            </ul>
+            <AuthorizeView Roles="SuperAdmin,Moderator">
+                <Authorized>
+                    @if (!showAddCrewForm)
+                    {
+                        <button class="btn btn-sm btn-outline-success ms-2"
+                                @onclick="() => showAddCrewForm = true">
+                            + Екіпаж
+                        </button>
+                    }
+                    else
+                    {
+                        <div class="d-flex gap-2 align-items-center ms-2">
+                            <input class="form-control form-control-sm" style="width:130px;"
+                                   @bind="newCrewName" placeholder="Назва" />
+                            <select class="form-select form-select-sm" style="width:110px;"
+                                    @bind="newCrewType">
+                                <option value="@CrewType.FPV">FPV</option>
+                                <option value="@CrewType.Бомбер">Бомбер</option>
+                            </select>
+                            <button class="btn btn-sm btn-success" @onclick="AddCrew">
+                                Додати
+                            </button>
+                            <button class="btn btn-sm btn-secondary"
+                                    @onclick="() => showAddCrewForm = false">
+                                ✕
+                            </button>
+                        </div>
+                    }
+                </Authorized>
+            </AuthorizeView>
+        </div>
+
+        @if (selectedCrew != null)
+        {
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h5 class="mb-0 d-inline">@selectedCrew.Name</h5>
+                    <span class="badge @(selectedCrew.Type == CrewType.FPV ? "bg-danger" : "bg-primary") ms-2">
+                        @selectedCrew.Type
+                    </span>
+                </div>
+                <AuthorizeView Roles="SuperAdmin,Moderator">
+                    <Authorized>
+                        <button class="btn btn-sm btn-outline-danger"
+                                @onclick="() => ShowDeleteCrewConfirm(selectedCrew.Id, selectedCrew.Name)">
+                            🗑 Видалити екіпаж
+                        </button>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
+
+            @if (showDeleteCrewConfirm)
+            {
+                <div class="alert alert-danger d-flex align-items-center gap-3 mb-3">
+                    <span>Видалити <strong>@deletingCrewName</strong> та всі його дані?</span>
+                    <button class="btn btn-sm btn-danger" @onclick="DeleteCrew">
+                        Так, видалити
+                    </button>
+                    <button class="btn btn-sm btn-secondary"
+                            @onclick="() => showDeleteCrewConfirm = false">
+                        Скасувати
+                    </button>
+                </div>
+            }
+
+            @* ===== ЗАПАСИ ЕКІПАЖУ ===== *@
+            <div class="row g-4 align-items-start mb-4">
+
+                @* БЕЗПІЛОТНИКИ *@
+                @if (selectedCrew.Type == CrewType.FPV)
+                {
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header fw-bold">🚁 Безпілотники</div>
+                            <div class="card-body p-0">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Назва</th>
+                                            <th style="width:110px;">Кількість</th>
+                                            <AuthorizeView Roles="SuperAdmin,Moderator">
+                                                <Authorized>
+                                                    <th style="width:80px;">Дії</th>
+                                                </Authorized>
+                                            </AuthorizeView>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var item in drones)
+                                        {
+                                            var itemId = item.Id;
+                                            <tr>
+                                                <td>
+                                                    @if (editingDroneId == itemId)
+                                                    {
+                                                        <input class="form-control form-control-sm"
+                                                               @bind="editingDroneName" />
+                                                    }
+                                                    else
+                                                    {
+
+                                                        @item.Name
+                                                    }
+                                                </td>
+                                                <td>
+                                                    @if (editingDroneId == itemId)
+                                                    {
+                                                        <input class="form-control form-control-sm"
+                                                               type="number" min="0"
+                                                               @bind="editingDroneQty" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge @(item.Quantity > 0 ? "bg-success" : "bg-secondary")">
+                                                            @item.Quantity
+                                                        </span>
+                                                    }
+                                                </td>
+                                                <AuthorizeView Roles="SuperAdmin,Moderator">
+                                                    <Authorized>
+                                                        <td>
+                                                            @if (editingDroneId == itemId)
+                                                            {
+                                                                <button class="btn btn-xs btn-success me-1"
+                                                                        @onclick="() => SaveDrone(itemId)">
+                                                                    ✓
+                                                                </button>
+                                                                <button class="btn btn-xs btn-secondary"
+                                                                        @onclick="() => editingDroneId = 0">
+                                                                    ✕
+                                                                </button>
+                                                            }
+                                                            else
+                                                            {
+                                                                <button class="btn btn-xs btn-warning me-1"
+                                                                        @onclick="() => StartDroneEdit(item)">
+                                                                    ✎
+                                                                </button>
+                                                                <button class="btn btn-xs btn-danger"
+                                                                        @onclick="() => DeleteDrone(itemId)">
+                                                                    🗑
+                                                                </button>
+                                                            }
+                                                        </td>
+                                                    </Authorized>
+                                                </AuthorizeView>
+                                            </tr>
+                                        }
+                                        @if (!drones.Any())
+                                        {
+                                            <tr>
+                                                <td colspan="3" class="text-muted text-center py-2">
+                                                    Немає позицій
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                            <AuthorizeView Roles="SuperAdmin,Moderator">
+                                <Authorized>
+                                    <div class="card-footer">
+                                        @if (showAddDroneForm)
+                                        {
+                                            <div class="d-flex gap-2">
+                                                <input class="form-control form-control-sm"
+                                                       @bind="newDroneName" placeholder="Назва" />
+                                                <input class="form-control form-control-sm"
+                                                       type="number" min="0" @bind="newDroneQty"
+                                                       style="width:80px;" />
+                                                <button class="btn btn-sm btn-success"
+                                                        @onclick="AddDrone">
+                                                    +
+                                                </button>
+                                                <button class="btn btn-sm btn-secondary"
+                                                        @onclick="() => showAddDroneForm = false">
+                                                    ✕
+                                                </button>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <button class="btn btn-sm btn-outline-primary w-100"
+                                                    @onclick="() => showAddDroneForm = true">
+                                                + Додати безпілотник
+                                            </button>
+                                        }
+                                    </div>
+                                </Authorized>
+                            </AuthorizeView>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    @* Бомбер — фіксований БПАК Vampire *@
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header fw-bold">🚁 Безпілотник</div>
+                            <div class="card-body p-0">
+                                <table class="table table-sm mb-0">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Назва</th>
+                                            <th style="width:110px;">Кількість</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if (bomberDrone != null)
+                                        {
+                                            <tr>
+                                                <td>БПАК Vampire</td>
+                                                <td>
+                                                    <span class="badge @(bomberDrone.Quantity > 0 ? "bg-success" : "bg-secondary")">
+                                                        @bomberDrone.Quantity
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        }
+                                        else
+                                        {
+                                            <tr>
+                                                <td colspan="2" class="text-muted text-center py-2">
+                                                    БПАК Vampire — поповніть зі складу
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @* БОЄКОМПЛЕКТ *@
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header fw-bold">💣 Боєкомплект</div>
+                        <div class="card-body p-0">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Назва</th>
+                                        <th style="width:110px;">Кількість</th>
+                                        <AuthorizeView Roles="SuperAdmin,Moderator">
+                                            <Authorized>
+                                                <th style="width:80px;">Дії</th>
+                                            </Authorized>
+                                        </AuthorizeView>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in ammos)
+                                    {
+                                        var itemId = item.Id;
+                                        <tr>
+                                            <td>
+                                                @if (editingAmmoId == itemId)
+                                                {
+                                                    <input class="form-control form-control-sm"
+                                                           @bind="editingAmmoName" />
+                                                }
+                                                else
+                                                {
+
+                                                    @item.Name
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (editingAmmoId == itemId)
+                                                {
+                                                    <input class="form-control form-control-sm"
+                                                           type="number" min="0"
+                                                           @bind="editingAmmoQty" />
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge @(item.Quantity > 0 ? "bg-success" : "bg-secondary")">
+                                                        @item.Quantity
+                                                    </span>
+                                                }
+                                            </td>
+                                            <AuthorizeView Roles="SuperAdmin,Moderator">
+                                                <Authorized>
+                                                    <td>
+                                                        @if (editingAmmoId == itemId)
+                                                        {
+                                                            <button class="btn btn-xs btn-success me-1"
+                                                                    @onclick="() => SaveAmmo(itemId)">
+                                                                ✓
+                                                            </button>
+                                                            <button class="btn btn-xs btn-secondary"
+                                                                    @onclick="() => editingAmmoId = 0">
+                                                                ✕
+                                                            </button>
+                                                        }
+                                                        else
+                                                        {
+                                                            <button class="btn btn-xs btn-warning me-1"
+                                                                    @onclick="() => StartAmmoEdit(item)">
+                                                                ✎
+                                                            </button>
+                                                            <button class="btn btn-xs btn-danger"
+                                                                    @onclick="() => DeleteAmmo(itemId)">
+                                                                🗑
+                                                            </button>
+                                                        }
+                                                    </td>
+                                                </Authorized>
+                                            </AuthorizeView>
+                                        </tr>
+                                    }
+                                    @if (!ammos.Any())
+                                    {
+                                        <tr>
+                                            <td colspan="3" class="text-muted text-center py-2">
+                                                Немає позицій
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        @if (selectedCrew.Type == CrewType.FPV)
+                        {
+                            <AuthorizeView Roles="SuperAdmin,Moderator">
+                                <Authorized>
+                                    <div class="card-footer">
+                                        @if (showAddAmmoForm)
+                                        {
+                                            <div class="d-flex gap-2">
+                                                <input class="form-control form-control-sm"
+                                                       @bind="newAmmoName" placeholder="Назва" />
+                                                <input class="form-control form-control-sm"
+                                                       type="number" min="0" @bind="newAmmoQty"
+                                                       style="width:80px;" />
+                                                <button class="btn btn-sm btn-success"
+                                                        @onclick="AddAmmo">
+                                                    +
+                                                </button>
+                                                <button class="btn btn-sm btn-secondary"
+                                                        @onclick="() => showAddAmmoForm = false">
+                                                    ✕
+                                                </button>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <button class="btn btn-sm btn-outline-primary w-100"
+                                                    @onclick="() => showAddAmmoForm = true">
+                                                + Додати боєкомплект
+                                            </button>
+                                        }
+                                    </div>
+                                </Authorized>
+                            </AuthorizeView>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            @* ===== ПОПОВНЕННЯ ЗІ СКЛАДУ ===== *@
+            <AuthorizeView Roles="SuperAdmin,Moderator">
+                <Authorized>
+                    <div class="card mb-4">
+                        <div class="card-header fw-bold">
+                            📦 Поповнити зі складу роти (@selectedCompany?.Name)
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3 align-items-end">
+                                <div class="col-md-2">
+                                    <label class="form-label">Тип</label>
+                                    @if (selectedCrew.Type == CrewType.FPV)
+                                    {
+                                        <select class="form-select" @bind="transferType"
+                                                @bind:after="OnTransferTypeChanged">
+                                            <option value="drone">Безпілотник</option>
+                                            <option value="ammo">Боєкомплект</option>
+                                        </select>
+                                    }
+                                    else
+                                    {
+                                        <input class="form-control" value="Боєкомплект"
+                                               disabled />
+                                    }
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Назва зі складу</label>
+                                    <select class="form-select" @bind="transferItemId">
+                                        <option value="0">— оберіть —</option>
+                                        @if (transferType == "drone")
+                                        {
+                                            @foreach (var d in warehouseDrones)
+                                            {
+                                                <option value="@d.Id">
+                                                    @d.Name (на складі: @d.Quantity)
+                                                </option>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            @foreach (var a in warehouseAmmos)
+                                            {
+                                                <option value="@a.Id">
+                                                    @a.Name (на складі: @a.Quantity)
+                                                </option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Кількість</label>
+                                    <input type="number" class="form-control"
+                                           min="1" @bind="transferQty" />
+                                </div>
+                                <div class="col-md-2">
+                                    <button class="btn btn-success w-100"
+                                            @onclick="TransferFromWarehouse">
+                                        Передати екіпажу
+                                    </button>
+                                </div>
+                            </div>
+                            @if (!string.IsNullOrEmpty(transferMessage))
+                            {
+                                <div class="alert @(transferSuccess ? "alert-success" : "alert-danger") mt-3">
+                                    @transferMessage
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </Authorized>
+            </AuthorizeView>
+
+            @* ===== ЖУРНАЛ ЕКІПАЖУ ===== *@
+            <div class="card">
+                <div class="card-header fw-bold">📋 Журнал змін екіпажу</div>
+                <div class="card-body">
+                    <div class="d-flex gap-2 mb-3 align-items-end flex-wrap">
+                        <div>
+                            <label class="form-label mb-1 small">Від</label>
+                            <input type="date" class="form-control form-control-sm"
+                                   @bind="crewLogFilterFrom"
+                                   @bind:after="ApplyCrewLogFilter" />
+                        </div>
+                        <div>
+                            <label class="form-label mb-1 small">До</label>
+                            <input type="date" class="form-control form-control-sm"
+                                   @bind="crewLogFilterTo"
+                                   @bind:after="ApplyCrewLogFilter" />
+                        </div>
+                        <div>
+                            <label class="form-label mb-1 small">Тип</label>
+                            <select class="form-select form-select-sm" style="width:160px;"
+                                    @bind="crewLogFilterType"
+                                    @bind:after="ApplyCrewLogFilter">
+                                <option value="">— всі —</option>
+                                <option value="Дрон">Безпілотник</option>
+                                <option value="Боєкомплект">Боєкомплект</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-sm btn-outline-secondary"
+                                @onclick="ResetCrewLogFilter">
+                            ✕ Скинути
+                        </button>
+                    </div>
+
+                    @if (!filteredCrewLogs.Any())
+                    {
+                        <p class="text-muted">Записів немає.</p>
+                    }
+                    else
+                    {
+                        <table class="table table-sm table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th style="cursor:pointer"
+                                        @onclick="SortCrewLogs">
+                                        Дата @(crewLogSortDesc ? "↓" : "↑")
+                                    </th>
+                                    <th>Тип</th>
+                                    <th>Назва</th>
+                                    <th>Дія</th>
+                                    <th>Було</th>
+                                    <th>Стало</th>
+                                    <th>Хто</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var log in pagedCrewLogs)
+                                {
+                                    <tr>
+                                        <td>@log.ChangedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                                        <td>@log.ItemType</td>
+                                        <td>@log.ItemName</td>
+                                        <td>
+                                            <span class="badge @GetLogBadge(log.Action)">
+                                                @log.Action
+                                            </span>
+                                        </td>
+                                        <td>@log.QuantityBefore</td>
+                                        <td>@log.QuantityAfter</td>
+                                        <td class="text-muted small">@log.ChangedBy</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+
+                        @if (crewLogTotalPages > 1)
+                        {
+                            <nav>
+                                <ul class="pagination mt-2">
+                                    <li class="page-item @(crewLogPage == 1 ? "disabled" : "")">
+                                        <button class="page-link"
+                                                @onclick="() => GoToCrewLogPage(crewLogPage - 1)">
+                                            &#8249;
+                                        </button>
+                                    </li>
+                                    @for (int p = 1; p <= crewLogTotalPages; p++)
+                                    {
+                                        var pn = p;
+                                        <li class="page-item @(crewLogPage == pn ? "active" : "")">
+                                            <button class="page-link"
+                                                    @onclick="() => GoToCrewLogPage(pn)">
+                                                @pn
+                                            </button>
+                                        </li>
+                                    }
+                                    <li class="page-item @(crewLogPage == crewLogTotalPages ? "disabled" : "")">
+                                        <button class="page-link"
+                                                @onclick="() => GoToCrewLogPage(crewLogPage + 1)">
+                                            &#8250;
+                                        </button>
+                                    </li>
+                                </ul>
+                            </nav>
+                            <p class="text-muted small">
+                                Всього: @filteredCrewLogs.Count.
+                                Сторінка @crewLogPage з @crewLogTotalPages.
+                            </p>
+                        }
+                    }
+                </div>
+            </div>
+        }
+    }
+}
+
+<style>
+    .btn-xs {
+        padding: 0.1rem 0.4rem;
+        font-size: 0.75rem;
+    }
+</style>
+
+@code {
+    private List<Company>? companies;
+    private int selectedCompanyId;
+    private Company? selectedCompany;
+    private string currentUser = "";
+
+    private List<Crew> crews = new();
+    private int selectedCrewId;
+    private Crew? selectedCrew;
+    private bool showAddCrewForm = false;
+    private string newCrewName = "";
+    private CrewType newCrewType = CrewType.FPV;
+    private bool showDeleteCrewConfirm = false;
+    private int deletingCrewId;
+    private string deletingCrewName = "";
+
+    // Безпілотники (тільки FPV)
+    private List<DroneItem> drones = new();
+    private DroneItem? bomberDrone;
+    private bool showAddDroneForm = false;
+    private string newDroneName = "";
+    private int newDroneQty = 0;
+    private int editingDroneId = 0;
+    private string editingDroneName = "";
+    private int editingDroneQty = 0;
+
+    // Боєкомплект
+    private List<AmmoItem> ammos = new();
+    private bool showAddAmmoForm = false;
+    private string newAmmoName = "";
+    private int newAmmoQty = 0;
+    private int editingAmmoId = 0;
+    private string editingAmmoName = "";
+    private int editingAmmoQty = 0;
+
+    // Передача зі складу
+    private string transferType = "drone";
+    private int transferItemId = 0;
+    private int transferQty = 1;
+    private string transferMessage = "";
+    private bool transferSuccess = false;
+    private List<WarehouseDroneItem> warehouseDrones = new();
+    private List<WarehouseAmmoItem> warehouseAmmos = new();
+
+    // Журнал
+    private List<CrewLog> allCrewLogs = new();
+    private List<CrewLog> filteredCrewLogs = new();
+    private List<CrewLog> pagedCrewLogs = new();
+    private int crewLogPage = 1;
+    private int crewLogPageSize = 15;
+    private int crewLogTotalPages =>
+        (int)Math.Ceiling(filteredCrewLogs.Count / (double)crewLogPageSize);
+    private DateOnly? crewLogFilterFrom = null;
+    private DateOnly? crewLogFilterTo = null;
+    private string crewLogFilterType = "";
+    private bool crewLogSortDesc = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        currentUser = authState.User.Identity?.Name ?? "";
+        companies = await Db.Companies.OrderBy(c => c.SortOrder).ToListAsync();
+        if (companies.Any())
+        {
+            selectedCompanyId = companies.First().Id;
+            selectedCompany = companies.First();
+            await LoadCompanyCrews();
+        }
+    }
+
+    private async Task SelectCompany(int id)
+    {
+        selectedCompanyId = id;
+        selectedCompany = companies?.FirstOrDefault(c => c.Id == id);
+        selectedCrewId = 0; selectedCrew = null;
+        await LoadCompanyCrews();
+    }
+
+    private async Task LoadCompanyCrews()
+    {
+        crews = await Db.Crews
+            .Where(c => c.CompanyId == selectedCompanyId)
+            .OrderBy(c => c.SortOrder).ToListAsync();
+
+        warehouseDrones = await Db.WarehouseDroneItems
+            .Where(d => d.CompanyId == selectedCompanyId && d.Quantity > 0)
+            .OrderBy(d => d.Name).ToListAsync();
+
+        warehouseAmmos = await Db.WarehouseAmmoItems
+            .Where(a => a.CompanyId == selectedCompanyId && a.Quantity > 0)
+            .OrderBy(a => a.Name).ToListAsync();
+
+        if (crews.Any())
+        {
+            selectedCrewId = crews.First().Id;
+            selectedCrew = crews.First();
+            SetTransferTypeForCrew();
+            await LoadCrewData();
+        }
+        else { selectedCrew = null; }
+    }
+
+    private async Task SelectCrew(int id)
+    {
+        selectedCrewId = id;
+        selectedCrew = crews.FirstOrDefault(c => c.Id == id);
+        editingDroneId = 0; editingAmmoId = 0;
+        showAddDroneForm = false; showAddAmmoForm = false;
+        transferMessage = ""; transferItemId = 0;
+        SetTransferTypeForCrew();
+        await LoadCrewData();
+    }
+
+    private void SetTransferTypeForCrew()
+    {
+        transferType = selectedCrew?.Type == CrewType.Бомбер ? "ammo" : "drone";
+    }
+
+    private async Task LoadCrewData()
+    {
+        drones = await Db.DroneItems
+            .Where(d => d.CrewId == selectedCrewId)
+            .OrderBy(d => d.Name).ToListAsync();
+
+        ammos = await Db.AmmoItems
+            .Where(a => a.CrewId == selectedCrewId)
+            .OrderBy(a => a.Name).ToListAsync();
+
+        bomberDrone = selectedCrew?.Type == CrewType.Бомбер
+            ? drones.FirstOrDefault(d => d.Name == "БПАК Vampire")
+            : null;
+
+        allCrewLogs = await Db.CrewLogs
+            .Where(l => l.CrewId == selectedCrewId)
+            .OrderByDescending(l => l.ChangedAt).ToListAsync();
+
+        ApplyCrewLogFilter();
+    }
+
+    // ===== ЕКІПАЖІ =====
+    private async Task AddCrew()
+    {
+        if (string.IsNullOrWhiteSpace(newCrewName)) return;
+        var maxOrder = crews.Any() ? crews.Max(c => c.SortOrder) : 0;
+        var crew = new Crew
+        {
+            CompanyId = selectedCompanyId,
+            Name = newCrewName.Trim(),
+            Type = newCrewType,
+            SortOrder = maxOrder + 1
+        };
+        Db.Crews.Add(crew);
+        await Db.SaveChangesAsync();
+        newCrewName = ""; showAddCrewForm = false;
+        await LoadCompanyCrews();
+        selectedCrewId = crew.Id;
+        selectedCrew = crews.FirstOrDefault(c => c.Id == crew.Id);
+        SetTransferTypeForCrew();
+        await LoadCrewData();
+    }
+
+    private void ShowDeleteCrewConfirm(int id, string name)
+    {
+        deletingCrewId = id; deletingCrewName = name;
+        showDeleteCrewConfirm = true;
+    }
+
+    private async Task DeleteCrew()
+    {
+        try
+        {
+            var crew = await Db.Crews.FindAsync(deletingCrewId);
+            if (crew != null)
+            {
+                Db.DroneItems.RemoveRange(
+                    Db.DroneItems.Where(d => d.CrewId == deletingCrewId));
+                Db.AmmoItems.RemoveRange(
+                    Db.AmmoItems.Where(a => a.CrewId == deletingCrewId));
+                Db.CrewLogs.RemoveRange(
+                    Db.CrewLogs.Where(l => l.CrewId == deletingCrewId));
+
+                var flights = await Db.Flights
+                    .Include(f => f.Drops)
+                    .Where(f => f.CrewId == deletingCrewId)
+                    .ToListAsync();
+                foreach (var flight in flights)
+                    Db.FlightDrops.RemoveRange(flight.Drops);
+                Db.Flights.RemoveRange(flights);
+
+                Db.Crews.Remove(crew);
+                await Db.SaveChangesAsync();
+            }
+
+            showDeleteCrewConfirm = false;
+            selectedCrewId = 0; selectedCrew = null;
+            drones = new(); ammos = new(); bomberDrone = null;
+            allCrewLogs = new(); filteredCrewLogs = new(); pagedCrewLogs = new();
+
+            crews = await Db.Crews
+                .Where(c => c.CompanyId == selectedCompanyId)
+                .OrderBy(c => c.SortOrder).ToListAsync();
+
+            warehouseDrones = await Db.WarehouseDroneItems
+                .Where(d => d.CompanyId == selectedCompanyId && d.Quantity > 0)
+                .OrderBy(d => d.Name).ToListAsync();
+
+            warehouseAmmos = await Db.WarehouseAmmoItems
+                .Where(a => a.CompanyId == selectedCompanyId && a.Quantity > 0)
+                .OrderBy(a => a.Name).ToListAsync();
+
+            if (crews.Any())
+            {
+                selectedCrewId = crews.First().Id;
+                selectedCrew = crews.First();
+                SetTransferTypeForCrew();
+                drones = await Db.DroneItems
+                    .Where(d => d.CrewId == selectedCrewId)
+                    .OrderBy(d => d.Name).ToListAsync();
+                ammos = await Db.AmmoItems
+                    .Where(a => a.CrewId == selectedCrewId)
+                    .OrderBy(a => a.Name).ToListAsync();
+                bomberDrone = selectedCrew?.Type == CrewType.Бомбер
+                    ? drones.FirstOrDefault(d => d.Name == "БПАК Vampire")
+                    : null;
+                allCrewLogs = await Db.CrewLogs
+                    .Where(l => l.CrewId == selectedCrewId)
+                    .OrderByDescending(l => l.ChangedAt).ToListAsync();
+                ApplyCrewLogFilter();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"DeleteCrew error: {ex.Message}");
+            showDeleteCrewConfirm = false;
+        }
+    }
+
+    // ===== БЕЗПІЛОТНИКИ (тільки FPV) =====
+    private async Task AddDrone()
+    {
+        if (string.IsNullOrWhiteSpace(newDroneName)) return;
+        var existing = drones.FirstOrDefault(d =>
+            d.Name.Equals(newDroneName.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (existing != null)
+        {
+            await AddCrewLog("Дрон", existing.Name, existing.Quantity,
+                existing.Quantity + newDroneQty, "Додано");
+            existing.Quantity += newDroneQty;
+            await Db.SaveChangesAsync();
+        }
+        else
+        {
+            var item = new DroneItem
+            {
+                CrewId = selectedCrewId,
+                Name = newDroneName.Trim(),
+                Quantity = newDroneQty
+            };
+            Db.DroneItems.Add(item);
+            await Db.SaveChangesAsync();
+            await AddCrewLog("Дрон", item.Name, 0, newDroneQty, "Додано");
+        }
+        newDroneName = ""; newDroneQty = 0; showAddDroneForm = false;
+        await LoadCrewData();
+    }
+
+    private void StartDroneEdit(DroneItem item)
+    {
+        editingDroneId = item.Id;
+        editingDroneName = item.Name;
+        editingDroneQty = item.Quantity;
+    }
+
+    private async Task SaveDrone(int id)
+    {
+        var item = await Db.DroneItems.FindAsync(id);
+        if (item != null)
+        {
+            await AddCrewLog("Дрон", item.Name, item.Quantity, editingDroneQty, "Змінено");
+            item.Name = editingDroneName.Trim();
+            item.Quantity = editingDroneQty;
+            await Db.SaveChangesAsync();
+        }
+        editingDroneId = 0;
+        await LoadCrewData();
+    }
+
+    private async Task DeleteDrone(int id)
+    {
+        var item = await Db.DroneItems.FindAsync(id);
+        if (item != null)
+        {
+            await AddCrewLog("Дрон", item.Name, item.Quantity, 0, "Видалено");
+            Db.DroneItems.Remove(item);
+            await Db.SaveChangesAsync();
+        }
+        await LoadCrewData();
+    }
+
+    // ===== БОЄКОМПЛЕКТ =====
+    private async Task AddAmmo()
+    {
+        if (string.IsNullOrWhiteSpace(newAmmoName)) return;
+        var existing = ammos.FirstOrDefault(a =>
+            a.Name.Equals(newAmmoName.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (existing != null)
+        {
+            await AddCrewLog("Боєкомплект", existing.Name, existing.Quantity,
+                existing.Quantity + newAmmoQty, "Додано");
+            existing.Quantity += newAmmoQty;
+            await Db.SaveChangesAsync();
+        }
+        else
+        {
+            var item = new AmmoItem
+            {
+                CrewId = selectedCrewId,
+                Name = newAmmoName.Trim(),
+                Quantity = newAmmoQty
+            };
+            Db.AmmoItems.Add(item);
+            await Db.SaveChangesAsync();
+            await AddCrewLog("Боєкомплект", item.Name, 0, newAmmoQty, "Додано");
+        }
+        newAmmoName = ""; newAmmoQty = 0; showAddAmmoForm = false;
+        await LoadCrewData();
+    }
+
+    private void StartAmmoEdit(AmmoItem item)
+    {
+        editingAmmoId = item.Id;
+        editingAmmoName = item.Name;
+        editingAmmoQty = item.Quantity;
+    }
+
+    private async Task SaveAmmo(int id)
+    {
+        var item = await Db.AmmoItems.FindAsync(id);
+        if (item != null)
+        {
+            await AddCrewLog("Боєкомплект", item.Name, item.Quantity, editingAmmoQty, "Змінено");
+            item.Name = editingAmmoName.Trim();
+            item.Quantity = editingAmmoQty;
+            await Db.SaveChangesAsync();
+        }
+        editingAmmoId = 0;
+        await LoadCrewData();
+    }
+
+    private async Task DeleteAmmo(int id)
+    {
+        var item = await Db.AmmoItems.FindAsync(id);
+        if (item != null)
+        {
+            await AddCrewLog("Боєкомплект", item.Name, item.Quantity, 0, "Видалено");
+            Db.AmmoItems.Remove(item);
+            await Db.SaveChangesAsync();
+        }
+        await LoadCrewData();
+    }
+
+    // ===== ПЕРЕДАЧА ЗІ СКЛАДУ =====
+    private async Task OnTransferTypeChanged()
+    {
+        transferItemId = 0;
+        if (transferType == "drone")
+        {
+            warehouseDrones = await Db.WarehouseDroneItems
+                .Where(d => d.CompanyId == selectedCompanyId && d.Quantity > 0)
+                .OrderBy(d => d.Name).ToListAsync();
+        }
+        else
+        {
+            warehouseAmmos = await Db.WarehouseAmmoItems
+                .Where(a => a.CompanyId == selectedCompanyId && a.Quantity > 0)
+                .OrderBy(a => a.Name).ToListAsync();
+        }
+    }
+
+    private async Task TransferFromWarehouse()
+    {
+        transferMessage = "";
+        if (transferItemId == 0)
+        {
+            transferMessage = "Оберіть позицію зі складу.";
+            transferSuccess = false; return;
+        }
+        if (transferQty <= 0)
+        {
+            transferMessage = "Введіть кількість більше 0.";
+            transferSuccess = false; return;
+        }
+
+        if (transferType == "drone")
+        {
+            var wItem = await Db.WarehouseDroneItems.FindAsync(transferItemId);
+            if (wItem == null || wItem.Quantity < transferQty)
+            {
+                transferMessage = "Недостатньо на складі.";
+                transferSuccess = false; return;
+            }
+            var crewItem = drones.FirstOrDefault(d =>
+                d.Name.Equals(wItem.Name, StringComparison.OrdinalIgnoreCase));
+            if (crewItem != null)
+            {
+                await AddCrewLog("Дрон", crewItem.Name, crewItem.Quantity,
+                    crewItem.Quantity + transferQty, "Поповнено зі складу");
+                crewItem.Quantity += transferQty;
+            }
+            else
+            {
+                var newItem = new DroneItem
+                {
+                    CrewId = selectedCrewId,
+                    Name = wItem.Name,
+                    Quantity = transferQty
+                };
+                Db.DroneItems.Add(newItem);
+                await Db.SaveChangesAsync();
+                await AddCrewLog("Дрон", wItem.Name, 0, transferQty, "Поповнено зі складу");
+            }
+            wItem.Quantity -= transferQty;
+            await Db.SaveChangesAsync();
+            transferMessage = $"Передано {transferQty} шт. '{wItem.Name}' екіпажу.";
+        }
+        else
+        {
+            var wItem = await Db.WarehouseAmmoItems.FindAsync(transferItemId);
+            if (wItem == null || wItem.Quantity < transferQty)
+            {
+                transferMessage = "Недостатньо на складі.";
+                transferSuccess = false; return;
+            }
+
+            // Для бомбера — якщо передаємо Vampire, то це дрон
+            if (selectedCrew?.Type == CrewType.Бомбер &&
+                wItem.Name.Contains("Vampire", StringComparison.OrdinalIgnoreCase))
+            {
+                var crewDrone = drones.FirstOrDefault(d =>
+                    d.Name.Equals(wItem.Name, StringComparison.OrdinalIgnoreCase));
+                if (crewDrone != null)
+                {
+                    await AddCrewLog("Дрон", crewDrone.Name, crewDrone.Quantity,
+                        crewDrone.Quantity + transferQty, "Поповнено зі складу");
+                    crewDrone.Quantity += transferQty;
+                }
+                else
+                {
+                    var newDrone = new DroneItem
+                    {
+                        CrewId = selectedCrewId,
+                        Name = wItem.Name,
+                        Quantity = transferQty
+                    };
+                    Db.DroneItems.Add(newDrone);
+                    await Db.SaveChangesAsync();
+                    await AddCrewLog("Дрон", wItem.Name, 0, transferQty, "Поповнено зі складу");
+                }
+            }
+            else
+            {
+                var crewItem = ammos.FirstOrDefault(a =>
+                    a.Name.Equals(wItem.Name, StringComparison.OrdinalIgnoreCase));
+                if (crewItem != null)
+                {
+                    await AddCrewLog("Боєкомплект", crewItem.Name, crewItem.Quantity,
+                        crewItem.Quantity + transferQty, "Поповнено зі складу");
+                    crewItem.Quantity += transferQty;
+                }
+                else
+                {
+                    var newItem = new AmmoItem
+                    {
+                        CrewId = selectedCrewId,
+                        Name = wItem.Name,
+                        Quantity = transferQty
+                    };
+                    Db.AmmoItems.Add(newItem);
+                    await Db.SaveChangesAsync();
+                    await AddCrewLog("Боєкомплект", wItem.Name, 0, transferQty,
+                        "Поповнено зі складу");
+                }
+            }
+
+            wItem.Quantity -= transferQty;
+            await Db.SaveChangesAsync();
+            transferMessage = $"Передано {transferQty} шт. '{wItem.Name}' екіпажу.";
+        }
+
+        transferSuccess = true;
+        transferItemId = 0; transferQty = 1;
+        await OnTransferTypeChanged();
+        await LoadCrewData();
+    }
+
+    // ===== ЖУРНАЛ =====
+    private async Task AddCrewLog(string itemType, string itemName,
+        int qtyBefore, int qtyAfter, string action)
+    {
+        Db.CrewLogs.Add(new CrewLog
+        {
+            CrewId = selectedCrewId,
+            ItemType = itemType,
+            ItemName = itemName,
+            QuantityBefore = qtyBefore,
+            QuantityAfter = qtyAfter,
+            Action = action,
+            ChangedBy = currentUser,
+            ChangedAt = DateTime.Now
+        });
+        await Db.SaveChangesAsync();
+    }
+
+    private void ApplyCrewLogFilter()
+    {
+        var q = allCrewLogs.AsEnumerable();
+        if (!string.IsNullOrEmpty(crewLogFilterType))
+            q = q.Where(l => l.ItemType == crewLogFilterType);
+        if (crewLogFilterFrom.HasValue)
+            q = q.Where(l => DateOnly.FromDateTime(l.ChangedAt) >= crewLogFilterFrom.Value);
+        if (crewLogFilterTo.HasValue)
+            q = q.Where(l => DateOnly.FromDateTime(l.ChangedAt) <= crewLogFilterTo.Value);
+        q = crewLogSortDesc
+            ? q.OrderByDescending(l => l.ChangedAt)
+            : q.OrderBy(l => l.ChangedAt);
+        filteredCrewLogs = q.ToList();
+        crewLogPage = 1;
+        UpdatePagedCrewLogs();
+    }
+
+    private void ResetCrewLogFilter()
+    {
+        crewLogFilterFrom = null; crewLogFilterTo = null; crewLogFilterType = "";
+        ApplyCrewLogFilter();
+    }
+
+    private void SortCrewLogs()
+    {
+        crewLogSortDesc = !crewLogSortDesc;
+        ApplyCrewLogFilter();
+    }
+
+    private void UpdatePagedCrewLogs()
+    {
+        pagedCrewLogs = filteredCrewLogs
+            .Skip((crewLogPage - 1) * crewLogPageSize)
+            .Take(crewLogPageSize).ToList();
+    }
+
+    private void GoToCrewLogPage(int page)
+    {
+        if (page >= 1 && page <= crewLogTotalPages)
+        {
+            crewLogPage = page;
+            UpdatePagedCrewLogs();
+        }
+    }
+
+    private string GetLogBadge(string action) => action switch
+    {
+        "Додано" => "bg-success",
+        "Змінено" => "bg-warning text-dark",
+        "Видалено" => "bg-danger",
+        "Поповнено зі складу" => "bg-info text-dark",
+        _ => "bg-secondary"
+    };
+}
