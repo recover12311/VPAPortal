@@ -7,5 +7,6 @@
         public Crew Crew { get; set; } = null!;
         public string Name { get; set; } = "";
         public int Quantity { get; set; }
+        public bool IsBomber { get; set; } = false;
     }
 }
