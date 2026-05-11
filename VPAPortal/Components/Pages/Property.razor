@@ -1,0 +1,791 @@
+﻿@page "/property"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using VPAPortal.Data
+@using VPAPortal.Data.Models
+@attribute [Authorize]
+@inject ApplicationDbContext Db
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Майно</PageTitle>
+
+<h3 class="mb-4">Майно</h3>
+
+@if (companies == null)
+{
+    <p>Завантаження...</p>
+}
+else
+{
+    @* ===== ВКЛАДКИ РОТ ===== *@
+    <ul class="nav nav-tabs mb-2">
+        @foreach (var company in companies)
+        {
+            var cId = company.Id;
+            <li class="nav-item">
+                <button class="nav-link @(selectedCompanyId == cId ? "active" : "")"
+                        @onclick="() => SelectCompany(cId)">
+                    @company.Name
+                </button>
+            </li>
+        }
+    </ul>
+
+    @* ===== ВКЛАДКИ ЕКІПАЖІВ ===== *@
+    @if (crews != null && crews.Any())
+    {
+        <ul class="nav nav-tabs mb-4">
+            @foreach (var crew in crews)
+            {
+                var crewId = crew.Id;
+                <li class="nav-item">
+                    <button class="nav-link @(selectedCrewId == crewId ? "active" : "")"
+                            @onclick="() => SelectCrew(crewId)">
+                        @crew.Name
+                        <span class="badge @(crew.Type == CrewType.FPV ? "bg-danger" : "bg-primary") ms-1"
+                              style="font-size:0.65rem;">
+                            @crew.Type
+                        </span>
+                    </button>
+                </li>
+            }
+        </ul>
+    }
+    else
+    {
+        <p class="text-muted mb-4">Екіпажів для цієї роти немає.</p>
+    }
+
+    @if (selectedCrew != null)
+    {
+        @* ===== КЕРУВАННЯ ТИПАМИ ===== *@
+        <AuthorizeView Roles="SuperAdmin,Moderator">
+            <Authorized>
+                <div class="card mb-4 border-secondary">
+                    <div class="card-header d-flex justify-content-between align-items-center"
+                         style="cursor:pointer;" @onclick="ToggleTypeManager">
+                        <span class="fw-bold text-secondary">⚙️ Типи майна</span>
+                        <span>@(showTypeManager ? "▲" : "▼")</span>
+                    </div>
+                    @if (showTypeManager)
+                    {
+                        <div class="card-body">
+                            <div class="d-flex gap-2 mb-3">
+                                <input class="form-control" style="max-width:260px;"
+                                       placeholder="Назва нового типу"
+                                       @bind="newTypeName" />
+                                <button class="btn btn-sm btn-outline-primary" @onclick="AddType">
+                                    + Додати тип
+                                </button>
+                            </div>
+                            @if (!string.IsNullOrEmpty(typeMessage))
+                            {
+                                <div class="alert @(typeSuccess ? "alert-success" : "alert-danger") py-1 small">
+                                    @typeMessage
+                                </div>
+                            }
+                            <table class="table table-sm table-bordered mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Назва</th>
+                                        <th style="width:90px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var pt in propertyTypes)
+                                    {
+                                        var ptId = pt.Id;
+                                        if (editingTypeId == ptId)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <input class="form-control form-control-sm"
+                                                           @bind="editTypeName" />
+                                                </td>
+                                                <td>
+                                                    <button class="btn btn-xs btn-success me-1"
+                                                            @onclick="SaveType">
+                                                        ✓
+                                                    </button>
+                                                    <button class="btn btn-xs btn-secondary"
+                                                            @onclick="CancelEditType">
+                                                        ✕
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        }
+                                        else
+                                        {
+                                            <tr>
+                                                <td>@pt.Name</td>
+                                                <td>
+                                                    <button class="btn btn-xs btn-warning me-1"
+                                                            @onclick="() => StartEditType(ptId, pt.Name)">
+                                                        ✎
+                                                    </button>
+                                                    <button class="btn btn-xs btn-danger"
+                                                            @onclick="() => DeleteType(ptId)">
+                                                        🗑
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+
+                @* ===== ФОРМА ДОДАВАННЯ ===== *@
+                <div class="card mb-4">
+                    <div class="card-header fw-bold">➕ Додати майно</div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Назва</label>
+                                <input class="form-control" @bind="newItemName"
+                                       placeholder="Назва майна" />
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Кількість</label>
+                                <input type="number" class="form-control" min="0"
+                                       @bind="newItemQuantity" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Тип</label>
+                                <select class="form-select" @bind="newItemTypeId">
+                                    <option value="0">— оберіть —</option>
+                                    @foreach (var pt in propertyTypes)
+                                    {
+                                        <option value="@pt.Id">@pt.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-3 d-flex align-items-end">
+                                <button class="btn btn-primary w-100" @onclick="AddItem">
+                                    📦 Додати
+                                </button>
+                            </div>
+                        </div>
+                        @if (!string.IsNullOrEmpty(addItemMessage))
+                        {
+                            <div class="alert @(addItemSuccess ? "alert-success" : "alert-danger") mt-3">
+                                @addItemMessage
+                            </div>
+                        }
+                    </div>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        @* ===== МОДАЛКА РЕДАГУВАННЯ ===== *@
+        @if (showEditModal)
+        {
+            <div class="modal d-block" style="background:rgba(0,0,0,0.5);">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">✏️ Редагувати майно</h5>
+                            <button class="btn-close" @onclick="CloseEditModal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">Назва</label>
+                                <input class="form-control" @bind="editItemName" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Кількість</label>
+                                <input type="number" class="form-control" min="0"
+                                       @bind="editItemQuantity" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Тип</label>
+                                <select class="form-select" @bind="editItemTypeId">
+                                    @foreach (var pt in propertyTypes)
+                                    {
+                                        <option value="@pt.Id">@pt.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            @if (!string.IsNullOrEmpty(editItemMessage))
+                            {
+                                <div class="alert @(editItemSuccess ? "alert-success" : "alert-danger")">
+                                    @editItemMessage
+                                </div>
+                            }
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" @onclick="CloseEditModal">
+                                Скасувати
+                            </button>
+                            <button class="btn btn-primary" @onclick="SaveEditItem">
+                                Зберегти
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* ===== ФІЛЬТР ===== *@
+        <div class="d-flex flex-wrap gap-2 mb-3 align-items-end">
+            <div>
+                <label class="form-label mb-1 small">Тип</label>
+                <select class="form-select form-select-sm" style="width:220px;"
+                        @bind="filterTypeId" @bind:after="ApplyFilter">
+                    <option value="0">— всі —</option>
+                    @foreach (var pt in propertyTypes)
+                    {
+                        <option value="@pt.Id">@pt.Name</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="form-label mb-1 small">Назва</label>
+                <input class="form-control form-control-sm" style="width:200px;"
+                       placeholder="Пошук..."
+                       @bind="filterName" @bind:after="ApplyFilter" />
+            </div>
+            <button class="btn btn-sm btn-outline-secondary" @onclick="ResetFilter">
+                ✕ Скинути
+            </button>
+        </div>
+
+        @* ===== ТАБЛИЦЯ МАЙНА ===== *@
+        @if (!filteredItems.Any())
+        {
+            <p class="text-muted">Майна для цього екіпажу немає.</p>
+        }
+        else
+        {
+            <table class="table table-bordered table-hover mb-4">
+                <thead class="table-dark">
+                    <tr>
+                        <th>#</th>
+                        <th>Назва</th>
+                        <th>Кількість</th>
+                        <th>Тип</th>
+                        <th>Додав</th>
+                        <AuthorizeView Roles="SuperAdmin,Moderator">
+                            <Authorized>
+                                <th style="width:90px;">Дії</th>
+                            </Authorized>
+                        </AuthorizeView>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in pagedItems.Select((x, i) => new { Item = x, Index = i }))
+                    {
+                        var itemId = item.Item.Id;
+                        var rowNum = (currentPage - 1) * pageSize + item.Index + 1;
+                        <tr>
+                            <td>@rowNum</td>
+                            <td>@item.Item.Name</td>
+                            <td>
+                                <span class="badge @(item.Item.Quantity > 0 ? "bg-success" : "bg-danger")">
+                                    @item.Item.Quantity
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">
+                                    @item.Item.PropertyType?.Name
+                                </span>
+                            </td>
+                            <td class="text-muted small">@item.Item.CreatedBy</td>
+                            <AuthorizeView Roles="SuperAdmin,Moderator">
+                                <Authorized>
+                                    <td>
+                                        <button class="btn btn-xs btn-warning me-1"
+                                                @onclick="() => OpenEditModal(item.Item)">
+                                            ✎
+                                        </button>
+                                        <button class="btn btn-xs btn-danger"
+                                                @onclick="() => DeleteItem(itemId)">
+                                            🗑
+                                        </button>
+                                    </td>
+                                </Authorized>
+                            </AuthorizeView>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            @if (totalPages > 1)
+            {
+                <nav>
+                    <ul class="pagination">
+                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                            <button class="page-link" @onclick="PrevPage">&#8249;</button>
+                        </li>
+                        @for (int p = 1; p <= totalPages; p++)
+                        {
+                            var pn = p;
+                            <li class="page-item @(currentPage == pn ? "active" : "")">
+                                <button class="page-link" @onclick="() => GoToPage(pn)">@pn</button>
+                            </li>
+                        }
+                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                            <button class="page-link" @onclick="NextPage">&#8250;</button>
+                        </li>
+                    </ul>
+                </nav>
+                <p class="text-muted small">
+                    Показано @pagedItems.Count() з @filteredItems.Count.
+                    Сторінка @currentPage з @totalPages.
+                </p>
+            }
+        }
+
+        @* ===== ЖУРНАЛ ЗМІН ===== *@
+        <div class="card mt-4 border-secondary">
+            <div class="card-header d-flex justify-content-between align-items-center"
+                 style="cursor:pointer;" @onclick="ToggleLog">
+                <span class="fw-bold text-secondary">📋 Журнал змін</span>
+                <span>@(showLog ? "▲" : "▼")</span>
+            </div>
+            @if (showLog)
+            {
+                <div class="card-body p-0">
+                    @if (!logs.Any())
+                    {
+                        <p class="text-muted p-3 mb-0">Журнал порожній.</p>
+                    }
+                    else
+                    {
+                        <table class="table table-sm table-striped mb-0">
+                            <thead class="table-secondary">
+                                <tr>
+                                    <th>Дата/час</th>
+                                    <th>Дія</th>
+                                    <th>Майно</th>
+                                    <th>Деталі</th>
+                                    <th>Хто</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var log in logs.Take(100))
+                                {
+                                    <tr>
+                                        <td class="text-muted small text-nowrap">
+                                            @log.CreatedAt.ToString("dd.MM.yyyy HH:mm")
+                                        </td>
+                                        <td>
+                                            <span class="badge @GetActionBadge(log.Action)">
+                                                @log.Action
+                                            </span>
+                                        </td>
+                                        <td>@log.ItemName</td>
+                                        <td class="small text-muted">@log.Details</td>
+                                        <td class="small text-muted">@log.CreatedBy</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            }
+        </div>
+    }
+}
+
+<style>
+    .btn-xs {
+        padding: 0.1rem 0.4rem;
+        font-size: 0.75rem;
+    }
+</style>
+
+@code {
+    private List<Company>? companies;
+    private int selectedCompanyId;
+    private List<Crew>? crews;
+    private int selectedCrewId;
+    private Crew? selectedCrew;
+
+    private List<PropertyType> propertyTypes = new();
+    private List<PropertyItem> allItems = new();
+    private List<PropertyItem> filteredItems = new();
+    private IEnumerable<PropertyItem> pagedItems = new List<PropertyItem>();
+    private List<PropertyLog> logs = new();
+
+    // Типи
+    private bool showTypeManager = false;
+    private string newTypeName = "";
+    private bool typeSuccess;
+    private string typeMessage = "";
+    private int editingTypeId = 0;
+    private string editTypeName = "";
+
+    // Додавання
+    private string newItemName = "";
+    private int newItemQuantity = 1;
+    private int newItemTypeId = 0;
+    private string addItemMessage = "";
+    private bool addItemSuccess;
+
+    // Редагування
+    private bool showEditModal = false;
+    private int editingItemId = 0;
+    private string editItemName = "";
+    private int editItemQuantity;
+    private int editItemTypeId;
+    private string editItemMessage = "";
+    private bool editItemSuccess;
+
+    // Фільтри
+    private int filterTypeId = 0;
+    private string filterName = "";
+
+    // Пагінація
+    private int currentPage = 1;
+    private int pageSize = 15;
+    private int totalPages =>
+        (int)Math.Ceiling(filteredItems.Count / (double)pageSize);
+
+    // Журнал
+    private bool showLog = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        companies = await Db.Companies.OrderBy(c => c.SortOrder).ToListAsync();
+        await LoadTypes();
+        if (companies.Any())
+        {
+            selectedCompanyId = companies.First().Id;
+            await LoadCrews();
+        }
+    }
+
+    private async Task LoadTypes()
+    {
+        propertyTypes = await Db.PropertyTypes.OrderBy(t => t.SortOrder).ThenBy(t => t.Name).ToListAsync();
+    }
+
+    private async Task SelectCompany(int id)
+    {
+        selectedCompanyId = id;
+        selectedCrewId = 0;
+        selectedCrew = null;
+        await LoadCrews();
+    }
+
+    private async Task LoadCrews()
+    {
+        crews = await Db.Crews
+            .Where(c => c.CompanyId == selectedCompanyId)
+            .OrderBy(c => c.SortOrder).ToListAsync();
+
+        if (crews.Any())
+        {
+            selectedCrewId = crews.First().Id;
+            selectedCrew = crews.First();
+            await LoadData();
+        }
+        else
+        {
+            selectedCrew = null;
+            allItems = new();
+            filteredItems = new();
+            logs = new();
+        }
+    }
+
+    private async Task SelectCrew(int id)
+    {
+        selectedCrewId = id;
+        selectedCrew = crews?.FirstOrDefault(c => c.Id == id);
+        currentPage = 1;
+        filterTypeId = 0;
+        filterName = "";
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        allItems = await Db.PropertyItems
+            .Where(i => i.CrewId == selectedCrewId)
+            .Include(i => i.PropertyType)
+            .OrderBy(i => i.PropertyType.Name).ThenBy(i => i.Name)
+            .ToListAsync();
+
+        logs = await Db.PropertyLogs
+            .Where(l => l.CrewId == selectedCrewId)
+            .OrderByDescending(l => l.CreatedAt)
+            .ToListAsync();
+
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        filteredItems = allItems.Where(i =>
+        {
+            if (filterTypeId != 0 && i.PropertyTypeId != filterTypeId) return false;
+            if (!string.IsNullOrEmpty(filterName) &&
+                !i.Name.Contains(filterName, StringComparison.OrdinalIgnoreCase)) return false;
+            return true;
+        }).ToList();
+        currentPage = 1;
+        UpdatePagedItems();
+    }
+
+    private void ResetFilter()
+    {
+        filterTypeId = 0;
+        filterName = "";
+        ApplyFilter();
+    }
+
+    private void UpdatePagedItems()
+    {
+        pagedItems = filteredItems.Skip((currentPage - 1) * pageSize).Take(pageSize);
+    }
+
+    private string GetUser(System.Security.Claims.ClaimsPrincipal user)
+        => user.Identity?.Name ?? "";
+
+    private async Task AddItem()
+    {
+        addItemMessage = "";
+        try
+        {
+            var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = GetUser(auth.User);
+
+            if (string.IsNullOrWhiteSpace(newItemName))
+                throw new Exception("Введіть назву");
+            if (newItemTypeId == 0)
+                throw new Exception("Оберіть тип");
+            if (newItemQuantity < 0)
+                throw new Exception("Кількість не може бути від'ємною");
+
+            var typeName = propertyTypes.FirstOrDefault(t => t.Id == newItemTypeId)?.Name ?? "";
+
+            var item = new PropertyItem
+            {
+                CrewId = selectedCrewId,
+                Name = newItemName.Trim(),
+                Quantity = newItemQuantity,
+                PropertyTypeId = newItemTypeId,
+                CreatedAt = DateTime.Now,
+                CreatedBy = user
+            };
+            Db.PropertyItems.Add(item);
+
+            Db.PropertyLogs.Add(new PropertyLog
+            {
+                CrewId = selectedCrewId,
+                Action = "Додано",
+                ItemName = newItemName.Trim(),
+                Details = $"Кількість: {newItemQuantity}, Тип: {typeName}",
+                CreatedAt = DateTime.Now,
+                CreatedBy = user
+            });
+
+            await Db.SaveChangesAsync();
+            addItemMessage = "Майно додано";
+            addItemSuccess = true;
+            newItemName = "";
+            newItemQuantity = 1;
+            newItemTypeId = 0;
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            addItemMessage = ex.Message;
+            addItemSuccess = false;
+        }
+    }
+
+    private void OpenEditModal(PropertyItem item)
+    {
+        editingItemId = item.Id;
+        editItemName = item.Name;
+        editItemQuantity = item.Quantity;
+        editItemTypeId = item.PropertyTypeId;
+        editItemMessage = "";
+        editItemSuccess = false;
+        showEditModal = true;
+    }
+
+    private void CloseEditModal()
+    {
+        showEditModal = false;
+        editingItemId = 0;
+        editItemMessage = "";
+    }
+
+    private async Task SaveEditItem()
+    {
+        editItemMessage = "";
+        try
+        {
+            var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = GetUser(auth.User);
+
+            var item = await Db.PropertyItems.Include(i => i.PropertyType)
+                .FirstOrDefaultAsync(i => i.Id == editingItemId);
+            if (item == null) throw new Exception("Запис не знайдено");
+
+            if (string.IsNullOrWhiteSpace(editItemName))
+                throw new Exception("Введіть назву");
+            if (editItemQuantity < 0)
+                throw new Exception("Кількість не може бути від'ємною");
+
+            var oldName = item.Name;
+            var oldQty = item.Quantity;
+            var oldType = item.PropertyType?.Name ?? "";
+            var newTypeName = propertyTypes.FirstOrDefault(t => t.Id == editItemTypeId)?.Name ?? "";
+
+            item.Name = editItemName.Trim();
+            item.Quantity = editItemQuantity;
+            item.PropertyTypeId = editItemTypeId;
+
+            var details = new List<string>();
+            if (oldName != item.Name) details.Add($"Назва: {oldName} → {item.Name}");
+            if (oldQty != item.Quantity) details.Add($"К-сть: {oldQty} → {item.Quantity}");
+            if (oldType != newTypeName) details.Add($"Тип: {oldType} → {newTypeName}");
+
+            Db.PropertyLogs.Add(new PropertyLog
+            {
+                CrewId = selectedCrewId,
+                Action = "Змінено",
+                ItemName = item.Name,
+                Details = details.Any() ? string.Join(", ", details) : "без змін",
+                CreatedAt = DateTime.Now,
+                CreatedBy = user
+            });
+
+            await Db.SaveChangesAsync();
+            editItemMessage = "Збережено";
+            editItemSuccess = true;
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            editItemMessage = ex.Message;
+            editItemSuccess = false;
+        }
+    }
+
+    private async Task DeleteItem(int itemId)
+    {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = GetUser(auth.User);
+
+        var item = await Db.PropertyItems.Include(i => i.PropertyType)
+            .FirstOrDefaultAsync(i => i.Id == itemId);
+        if (item == null) return;
+
+        Db.PropertyLogs.Add(new PropertyLog
+        {
+            CrewId = selectedCrewId,
+            Action = "Видалено",
+            ItemName = item.Name,
+            Details = $"Кількість: {item.Quantity}, Тип: {item.PropertyType?.Name}",
+            CreatedAt = DateTime.Now,
+            CreatedBy = user
+        });
+
+        Db.PropertyItems.Remove(item);
+        await Db.SaveChangesAsync();
+        await LoadData();
+    }
+
+    // ===== ТИПИ =====
+    private void ToggleTypeManager() => showTypeManager = !showTypeManager;
+
+    private async Task AddType()
+    {
+        typeMessage = "";
+        if (string.IsNullOrWhiteSpace(newTypeName))
+        {
+            typeMessage = "Введіть назву типу";
+            typeSuccess = false;
+            return;
+        }
+        var maxOrder = propertyTypes.Any() ? propertyTypes.Max(t => t.SortOrder) : 0;
+        Db.PropertyTypes.Add(new PropertyType
+        {
+            Name = newTypeName.Trim(),
+            SortOrder = maxOrder + 1
+        });
+        await Db.SaveChangesAsync();
+        newTypeName = "";
+        typeMessage = "Тип додано";
+        typeSuccess = true;
+        await LoadTypes();
+    }
+
+    private void StartEditType(int id, string name)
+    {
+        editingTypeId = id;
+        editTypeName = name;
+        typeMessage = "";
+    }
+
+    private void CancelEditType()
+    {
+        editingTypeId = 0;
+        editTypeName = "";
+    }
+
+    private async Task SaveType()
+    {
+        if (string.IsNullOrWhiteSpace(editTypeName)) return;
+        var pt = await Db.PropertyTypes.FindAsync(editingTypeId);
+        if (pt != null)
+        {
+            pt.Name = editTypeName.Trim();
+            await Db.SaveChangesAsync();
+            await LoadTypes();
+            await LoadData(); // оновити типи в списку
+        }
+        editingTypeId = 0;
+        editTypeName = "";
+    }
+
+    private async Task DeleteType(int id)
+    {
+        var inUse = await Db.PropertyItems.AnyAsync(i => i.PropertyTypeId == id);
+        if (inUse)
+        {
+            typeMessage = "Неможливо видалити: тип використовується";
+            typeSuccess = false;
+            return;
+        }
+        var pt = await Db.PropertyTypes.FindAsync(id);
+        if (pt != null)
+        {
+            Db.PropertyTypes.Remove(pt);
+            await Db.SaveChangesAsync();
+            await LoadTypes();
+        }
+    }
+
+    // ===== ЖУРНАЛ =====
+    private void ToggleLog() => showLog = !showLog;
+
+    private string GetActionBadge(string action) => action switch
+    {
+        "Додано" => "bg-success",
+        "Змінено" => "bg-warning text-dark",
+        "Видалено" => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    // ===== ПАГІНАЦІЯ =====
+    private void GoToPage(int page)
+    {
+        if (page >= 1 && page <= totalPages)
+        {
+            currentPage = page;
+            UpdatePagedItems();
+        }
+    }
+    private void PrevPage() => GoToPage(currentPage - 1);
+    private void NextPage() => GoToPage(currentPage + 1);
+}

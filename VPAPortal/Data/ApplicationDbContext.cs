@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using System.Reflection.Emit;
 using VPAPortal.Data.Models;
 
 namespace VPAPortal.Data
@@ -19,7 +20,9 @@ namespace VPAPortal.Data
         public DbSet<CrewLog> CrewLogs { get; set; }
         public DbSet<Flight> Flights { get; set; }
         public DbSet<FlightDrop> FlightDrops { get; set; }
-
+        public DbSet<PropertyType> PropertyTypes { get; set; }
+        public DbSet<PropertyItem> PropertyItems { get; set; }
+        public DbSet<PropertyLog> PropertyLogs { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -67,6 +70,16 @@ namespace VPAPortal.Data
                 .HasForeignKey(f => f.DroneItemId)
                 .IsRequired(false)
                 .OnDelete(DeleteBehavior.NoAction);
+
+            builder.Entity<PropertyType>().HasData(
+                new PropertyType { Id = 1, Name = "Радіолокаційне", SortOrder = 1 },
+                new PropertyType { Id = 2, Name = "Автомобільна техніка", SortOrder = 2 },
+                new PropertyType { Id = 3, Name = "Засоби зв'язку", SortOrder = 3 },
+                new PropertyType { Id = 4, Name = "Стрілецька зброя", SortOrder = 4 },
+                new PropertyType { Id = 5, Name = "Боєприпаси", SortOrder = 5 },
+                new PropertyType { Id = 6, Name = "Спорядження", SortOrder = 6 },
+                new PropertyType { Id = 7, Name = "Інше", SortOrder = 7 }
+);
         }
     }
 }
