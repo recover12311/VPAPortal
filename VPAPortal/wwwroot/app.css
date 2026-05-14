@@ -49,3 +49,390 @@ h1:focus {
 .darker-border-checkbox.form-check-input {
     border-color: #929292;
 }
+
+/* ========================================
+   VPAPORTAL — GLOBAL DESIGN SYSTEM
+   ======================================== */
+
+/* --- Базові змінні --- */
+:root {
+    --vpa-radius: 10px;
+    --vpa-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    --vpa-shadow-hover: 0 4px 20px rgba(0,0,0,0.13);
+    --vpa-transition: all 0.18s ease;
+}
+
+/* --- Загальний фон --- */
+body {
+    background: #f0f2f5;
+}
+
+/* --- Сторінковий заголовок --- */
+.page-title-bar {
+    padding: 1.1rem 1.4rem 1rem;
+    border-radius: var(--vpa-radius);
+    margin-bottom: 1.5rem;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    box-shadow: var(--vpa-shadow);
+}
+
+    .page-title-bar h3 {
+        margin: 0;
+        font-size: 1.35rem;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+    }
+
+    .page-title-bar .page-icon {
+        font-size: 1.6rem;
+        line-height: 1;
+    }
+
+    /* Вильоти — синій */
+    .page-title-bar.flights {
+        background: linear-gradient(135deg, #1a6fc4 0%, #2196f3 100%);
+    }
+    /* Склад — зелений */
+    .page-title-bar.warehouse {
+        background: linear-gradient(135deg, #1a8a4a 0%, #2ecc71 100%);
+    }
+    /* Екіпажі — помаранчевий */
+    .page-title-bar.crews {
+        background: linear-gradient(135deg, #c0560a 0%, #f57c00 100%);
+    }
+    /* Майно — бірюзовий */
+    .page-title-bar.property {
+        background: linear-gradient(135deg, #0a7a82 0%, #00bcd4 100%);
+    }
+    /* Адмін — фіолетовий */
+    .page-title-bar.admin {
+        background: linear-gradient(135deg, #5a1fa1 0%, #9c27b0 100%);
+    }
+
+/* --- Вкладки (nav-tabs) --- */
+.nav-tabs .nav-link {
+    border-radius: 8px 8px 0 0 !important;
+    font-weight: 500;
+    color: #555;
+    border: 1px solid transparent;
+    padding: 0.45rem 1rem;
+    transition: var(--vpa-transition);
+}
+
+    .nav-tabs .nav-link:hover {
+        background: #e8edf5;
+        color: #222;
+    }
+
+    .nav-tabs .nav-link.active {
+        font-weight: 700;
+        border-color: #dee2e6 #dee2e6 #fff;
+    }
+
+/* Акцент активної вкладки по сторінці */
+.tab-accent-flights .nav-tabs .nav-link.active {
+    color: #1a6fc4;
+    border-top: 3px solid #1a6fc4;
+}
+
+.tab-accent-warehouse .nav-tabs .nav-link.active {
+    color: #1a8a4a;
+    border-top: 3px solid #1a8a4a;
+}
+
+.tab-accent-crews .nav-tabs .nav-link.active {
+    color: #c0560a;
+    border-top: 3px solid #f57c00;
+}
+
+.tab-accent-property .nav-tabs .nav-link.active {
+    color: #0a7a82;
+    border-top: 3px solid #00bcd4;
+}
+
+.tab-accent-admin .nav-tabs .nav-link.active {
+    color: #5a1fa1;
+    border-top: 3px solid #9c27b0;
+}
+
+/* --- Картки --- */
+.card {
+    border: none !important;
+    border-radius: var(--vpa-radius) !important;
+    box-shadow: var(--vpa-shadow) !important;
+    transition: var(--vpa-transition);
+}
+
+    .card:hover {
+        box-shadow: var(--vpa-shadow-hover) !important;
+    }
+
+.card-header {
+    border-radius: var(--vpa-radius) var(--vpa-radius) 0 0 !important;
+    border-bottom: 1px solid rgba(0,0,0,0.07) !important;
+    background: #fff !important;
+    padding: 0.8rem 1.1rem !important;
+}
+
+.card-footer {
+    background: #f8f9fa !important;
+    border-top: 1px solid rgba(0,0,0,0.06) !important;
+    border-radius: 0 0 var(--vpa-radius) var(--vpa-radius) !important;
+}
+
+/* Кольорова смужка зліва у картках по сторінці */
+.card-accent-flights {
+    border-left: 4px solid #2196f3 !important;
+}
+
+.card-accent-warehouse {
+    border-left: 4px solid #2ecc71 !important;
+}
+
+.card-accent-crews {
+    border-left: 4px solid #f57c00 !important;
+}
+
+.card-accent-property {
+    border-left: 4px solid #00bcd4 !important;
+}
+
+.card-accent-admin {
+    border-left: 4px solid #9c27b0 !important;
+}
+
+/* --- Таблиці --- */
+.table {
+    border-radius: var(--vpa-radius);
+    overflow: hidden;
+    font-size: 0.9rem;
+}
+
+    .table thead.table-dark th {
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        padding: 0.65rem 0.85rem;
+    }
+
+    .table tbody tr {
+        transition: background 0.12s;
+    }
+
+.table-hover tbody tr:hover {
+    background: #f0f4ff !important;
+}
+/* Акцент рядку hover по сторінці */
+.table-hover-flights tbody tr:hover {
+    background: #e8f2ff !important;
+}
+
+.table-hover-warehouse tbody tr:hover {
+    background: #e8f9ef !important;
+}
+
+.table-hover-crews tbody tr:hover {
+    background: #fff3e8 !important;
+}
+
+.table-hover-property tbody tr:hover {
+    background: #e8f9fc !important;
+}
+
+/* --- Кнопки --- */
+.btn {
+    border-radius: 7px !important;
+    font-weight: 500;
+    transition: var(--vpa-transition);
+}
+
+.btn-xs {
+    padding: 0.15rem 0.5rem !important;
+    font-size: 0.75rem !important;
+    border-radius: 5px !important;
+}
+
+.btn-primary {
+    background: #2196f3 !important;
+    border-color: #1a6fc4 !important;
+}
+
+    .btn-primary:hover {
+        background: #1a6fc4 !important;
+    }
+
+.btn-success {
+    background: #2ecc71 !important;
+    border-color: #1a8a4a !important;
+}
+
+    .btn-success:hover {
+        background: #1a8a4a !important;
+    }
+
+.btn-warning {
+    background: #ffa726 !important;
+    border-color: #e65100 !important;
+    color: #fff !important;
+}
+
+    .btn-warning:hover {
+        background: #e65100 !important;
+    }
+
+.btn-danger {
+    background: #ef5350 !important;
+    border-color: #c62828 !important;
+}
+
+    .btn-danger:hover {
+        background: #c62828 !important;
+    }
+
+/* Акцентна кнопка для кожної сторінки */
+.btn-page-flights {
+    background: linear-gradient(135deg,#1a6fc4,#2196f3) !important;
+    color: #fff !important;
+    border: none !important;
+}
+
+.btn-page-warehouse {
+    background: linear-gradient(135deg,#1a8a4a,#2ecc71) !important;
+    color: #fff !important;
+    border: none !important;
+}
+
+.btn-page-crews {
+    background: linear-gradient(135deg,#c0560a,#f57c00) !important;
+    color: #fff !important;
+    border: none !important;
+}
+
+.btn-page-property {
+    background: linear-gradient(135deg,#0a7a82,#00bcd4) !important;
+    color: #fff !important;
+    border: none !important;
+}
+
+/* --- Форми --- */
+.form-control, .form-select {
+    border-radius: 7px !important;
+    border: 1px solid #d0d7e3 !important;
+    font-size: 0.9rem;
+    transition: var(--vpa-transition);
+}
+
+    .form-control:focus, .form-select:focus {
+        box-shadow: 0 0 0 3px rgba(33,150,243,0.15) !important;
+        border-color: #2196f3 !important;
+    }
+
+/* --- Бейджі --- */
+.badge {
+    border-radius: 5px !important;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    font-size: 0.72rem;
+    padding: 0.28em 0.55em !important;
+}
+
+/* --- Пагінація --- */
+.pagination .page-link {
+    border-radius: 6px !important;
+    margin: 0 2px;
+    border: 1px solid #dee2e6;
+    color: #555;
+    font-size: 0.85rem;
+    transition: var(--vpa-transition);
+}
+
+.pagination .page-item.active .page-link {
+    background: #2196f3;
+    border-color: #1a6fc4;
+}
+
+.pagination .page-link:hover {
+    background: #e8f2ff;
+    color: #1a6fc4;
+}
+
+/* --- Модальні вікна --- */
+.modal-content {
+    border: none !important;
+    border-radius: var(--vpa-radius) !important;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.18) !important;
+}
+
+.modal-header {
+    border-radius: var(--vpa-radius) var(--vpa-radius) 0 0 !important;
+    border-bottom: 1px solid #eee !important;
+    padding: 1rem 1.3rem !important;
+}
+
+.modal-footer {
+    border-top: 1px solid #eee !important;
+    border-radius: 0 0 var(--vpa-radius) var(--vpa-radius) !important;
+}
+
+/* --- Алерти --- */
+.alert {
+    border-radius: var(--vpa-radius) !important;
+    border: none !important;
+    font-size: 0.9rem;
+}
+
+/* --- Навігація (бокове меню) --- */
+.navbar-dark {
+    background: linear-gradient(180deg, #1a1f36 0%, #2d3561 100%) !important;
+    box-shadow: 2px 0 12px rgba(0,0,0,0.15);
+}
+
+.nav-scrollable {
+    background: linear-gradient(180deg, #1e2440 0%, #252d5a 100%);
+}
+
+.nav-link {
+    border-radius: 8px !important;
+    margin: 2px 0;
+    transition: var(--vpa-transition);
+}
+
+    .nav-link:hover, .nav-link.active {
+        background: rgba(255,255,255,0.12) !important;
+        color: #fff !important;
+    }
+
+    .nav-link.active {
+        background: rgba(255,255,255,0.18) !important;
+        font-weight: 600;
+    }
+
+/* --- Фільтр-панель --- */
+.filter-bar {
+    background: #fff;
+    border-radius: var(--vpa-radius);
+    padding: 0.85rem 1.1rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--vpa-shadow);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: flex-end;
+}
+
+/* --- Дата-бар (вильоти) --- */
+.date-bar {
+    background: #fff;
+    border-radius: var(--vpa-radius);
+    padding: 0.8rem 1.2rem;
+    margin-bottom: 1.2rem;
+    box-shadow: var(--vpa-shadow);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
