@@ -23,6 +23,9 @@ namespace VPAPortal.Data
         public DbSet<PropertyType> PropertyTypes { get; set; }
         public DbSet<PropertyItem> PropertyItems { get; set; }
         public DbSet<PropertyLog> PropertyLogs { get; set; }
+        public DbSet<CompanyPropertyItem> CompanyPropertyItems { get; set; }
+        public DbSet<PropertyInvoice> PropertyInvoices { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);

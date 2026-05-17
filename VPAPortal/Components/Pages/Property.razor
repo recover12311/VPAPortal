@@ -7,6 +7,7 @@
 @attribute [Authorize]
 @inject ApplicationDbContext Db
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IWebHostEnvironment Env
 
 <PageTitle>Майно</PageTitle>
 
@@ -22,7 +23,7 @@
 else
 {
     @* ===== ВКЛАДКИ РОТ ===== *@
-    <ul class="nav nav-tabs mb-2">
+    <ul class="nav nav-tabs mb-4">
         @foreach (var company in companies)
         {
             var cId = company.Id;
@@ -35,49 +36,23 @@ else
         }
     </ul>
 
-    @* ===== ВКЛАДКИ ЕКІПАЖІВ ===== *@
-    @if (crews != null && crews.Any())
-    {
-        <ul class="nav nav-tabs mb-4">
-            @foreach (var crew in crews)
-            {
-                var crewId = crew.Id;
-                <li class="nav-item">
-                    <button class="nav-link @(selectedCrewId == crewId ? "active" : "")"
-                            @onclick="() => SelectCrew(crewId)">
-                        @crew.Name
-                        <span class="badge @(crew.Type == CrewType.FPV ? "bg-danger" : "bg-primary") ms-1"
-                              style="font-size:0.65rem;">
-                            @crew.Type
-                        </span>
-                    </button>
-                </li>
-            }
-        </ul>
-    }
-    else
-    {
-        <p class="text-muted mb-4">Екіпажів для цієї роти немає.</p>
-    }
-
-    @if (selectedCrew != null)
+    @if (selectedCompany != null)
     {
         @* ===== КЕРУВАННЯ ТИПАМИ ===== *@
         <AuthorizeView Roles="SuperAdmin,Moderator">
             <Authorized>
-                <div class="card mb-4 border-secondary">
+                <div class="card mb-4">
                     <div class="card-header d-flex justify-content-between align-items-center"
                          style="cursor:pointer;" @onclick="ToggleTypeManager">
-                        <span class="fw-bold text-secondary">⚙️ Типи майна</span>
-                        <span>@(showTypeManager ? "▲" : "▼")</span>
+                        <span class="fw-bold text-muted">⚙️ Типи майна</span>
+                        <span class="text-muted">@(showTypeManager ? "▲" : "▼")</span>
                     </div>
                     @if (showTypeManager)
                     {
                         <div class="card-body">
                             <div class="d-flex gap-2 mb-3">
                                 <input class="form-control" style="max-width:260px;"
-                                       placeholder="Назва нового типу"
-                                       @bind="newTypeName" />
+                                       placeholder="Назва нового типу" @bind="newTypeName" />
                                 <button class="btn btn-sm btn-outline-primary" @onclick="AddType">
                                     + Додати тип
                                 </button>
@@ -89,7 +64,7 @@ else
                                 </div>
                             }
                             <table class="table table-sm table-bordered mb-0">
-                                <thead class="table-light">
+                                <thead class="table-dark">
                                     <tr>
                                         <th>Назва</th>
                                         <th style="width:90px;"></th>
@@ -102,19 +77,10 @@ else
                                         if (editingTypeId == ptId)
                                         {
                                             <tr>
+                                                <td><input class="form-control form-control-sm" @bind="editTypeName" /></td>
                                                 <td>
-                                                    <input class="form-control form-control-sm"
-                                                           @bind="editTypeName" />
-                                                </td>
-                                                <td>
-                                                    <button class="btn btn-xs btn-success me-1"
-                                                            @onclick="SaveType">
-                                                        ✓
-                                                    </button>
-                                                    <button class="btn btn-xs btn-secondary"
-                                                            @onclick="CancelEditType">
-                                                        ✕
-                                                    </button>
+                                                    <button class="btn btn-xs btn-success me-1" @onclick="SaveType">✓</button>
+                                                    <button class="btn btn-xs btn-secondary" @onclick="CancelEditType">✕</button>
                                                 </td>
                                             </tr>
                                         }
@@ -140,214 +106,617 @@ else
                         </div>
                     }
                 </div>
-
-                @* ===== ФОРМА ДОДАВАННЯ ===== *@
-                <div class="card mb-4">
-                    <div class="card-header fw-bold">➕ Додати майно</div>
-                    <div class="card-body">
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <label class="form-label">Назва</label>
-                                <input class="form-control" @bind="newItemName"
-                                       placeholder="Назва майна" />
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label">Кількість</label>
-                                <input type="number" class="form-control" min="0"
-                                       @bind="newItemQuantity" />
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label">Тип</label>
-                                <select class="form-select" @bind="newItemTypeId">
-                                    <option value="0">— оберіть —</option>
-                                    @foreach (var pt in propertyTypes)
-                                    {
-                                        <option value="@pt.Id">@pt.Name</option>
-                                    }
-                                </select>
-                            </div>
-                            <div class="col-md-3 d-flex align-items-end">
-                                <button class="btn btn-primary w-100" @onclick="AddItem">
-                                    📦 Додати
-                                </button>
-                            </div>
-                        </div>
-                        @if (!string.IsNullOrEmpty(addItemMessage))
-                        {
-                            <div class="alert @(addItemSuccess ? "alert-success" : "alert-danger") mt-3">
-                                @addItemMessage
-                            </div>
-                        }
-                    </div>
-                </div>
             </Authorized>
         </AuthorizeView>
 
-        @* ===== МОДАЛКА РЕДАГУВАННЯ ===== *@
-        @if (showEditModal)
-        {
-            <div class="modal d-block" style="background:rgba(0,0,0,0.5);">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">✏️ Редагувати майно</h5>
-                            <button class="btn-close" @onclick="CloseEditModal"></button>
+        @* ===================================================================
+           БЛОК 1: МАЙНО РОТИ
+        =================================================================== *@
+        <div class="card card-accent-property mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="fw-bold">🏢 Майно роти — @selectedCompany.Name</span>
+                <span class="badge bg-secondary">@companyItems.Count поз.</span>
+            </div>
+            <div class="card-body p-0">
+
+                @* Форма додавання майна роти *@
+                <AuthorizeView Roles="SuperAdmin,Moderator">
+                    <Authorized>
+                        <div class="p-3 border-bottom bg-light" style="background:#f8fffe !important;">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-4">
+                                    <label class="form-label">Назва</label>
+                                    <input class="form-control form-control-sm"
+                                           @bind="newCompanyItemName" placeholder="Назва майна" />
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">К-сть</label>
+                                    <input type="number" class="form-control form-control-sm"
+                                           min="0" @bind="newCompanyItemQty" />
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Тип</label>
+                                    <select class="form-select form-select-sm" @bind="newCompanyItemTypeId">
+                                        <option value="0">— оберіть —</option>
+                                        @foreach (var pt in propertyTypes)
+                                        {
+                                            <option value="@pt.Id">@pt.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <button class="btn btn-sm btn-page-property w-100"
+                                            @onclick="AddCompanyItem">
+                                        + Додати майно роти
+                                    </button>
+                                </div>
+                            </div>
+                            @if (!string.IsNullOrEmpty(addCompanyItemMessage))
+                            {
+                                <div class="alert @(addCompanyItemSuccess ? "alert-success" : "alert-danger") mt-2 py-1 small mb-0">
+                                    @addCompanyItemMessage
+                                </div>
+                            }
                         </div>
-                        <div class="modal-body">
-                            <div class="mb-3">
-                                <label class="form-label">Назва</label>
-                                <input class="form-control" @bind="editItemName" />
+                    </Authorized>
+                </AuthorizeView>
+
+                @* Фільтр майна роти *@
+                <div class="p-3 border-bottom d-flex flex-wrap gap-2 align-items-end">
+                    <div>
+                        <label class="form-label mb-1 small">Тип</label>
+                        <select class="form-select form-select-sm" style="width:180px;"
+                                @bind="filterCompanyTypeId" @bind:after="ApplyCompanyFilter">
+                            <option value="0">— всі —</option>
+                            @foreach (var pt in propertyTypes)
+                            {
+                                <option value="@pt.Id">@pt.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label mb-1 small">Назва</label>
+                        <input class="form-control form-control-sm" style="width:180px;"
+                               placeholder="Пошук..." @bind="filterCompanyName"
+                               @bind:after="ApplyCompanyFilter" />
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="ResetCompanyFilter">
+                        ✕ Скинути
+                    </button>
+                </div>
+
+                @if (!filteredCompanyItems.Any())
+                {
+                    <p class="text-muted p-3 mb-0">Майна роти немає.</p>
+                }
+                else
+                {
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>#</th>
+                                <th>Назва</th>
+                                <th style="width:100px;">К-сть</th>
+                                <th>Тип</th>
+                                <th>Додав</th>
+                                <AuthorizeView Roles="SuperAdmin,Moderator">
+                                    <Authorized><th style="width:90px;">Дії</th></Authorized>
+                                </AuthorizeView>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in filteredCompanyItems.Select((x, i) => new { Item = x, Index = i }))
+                            {
+                                var itemId = item.Item.Id;
+                                <tr>
+                                    <td class="text-muted">@(item.Index + 1)</td>
+                                    <td>
+                                        @if (editingCompanyItemId == itemId)
+                                        {
+                                            <input class="form-control form-control-sm"
+                                                   @bind="editingCompanyItemName" />
+                                        }
+                                        else
+                                        {
+
+                                            @item.Item.Name
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (editingCompanyItemId == itemId)
+                                        {
+                                            <input type="number" class="form-control form-control-sm"
+                                                   min="0" @bind="editingCompanyItemQty" />
+                                        }
+                                        else
+                                        {
+                                            <span class="badge @(item.Item.Quantity > 0 ? "bg-success" : "bg-danger")">
+                                                @item.Item.Quantity
+                                            </span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (editingCompanyItemId == itemId)
+                                        {
+                                            <select class="form-select form-select-sm"
+                                                    @bind="editingCompanyItemTypeId">
+                                                @foreach (var pt in propertyTypes)
+                                                {
+                                                    <option value="@pt.Id">@pt.Name</option>
+                                                }
+                                            </select>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">
+                                                @item.Item.PropertyType?.Name
+                                            </span>
+                                        }
+                                    </td>
+                                    <td class="text-muted small">@item.Item.CreatedBy</td>
+                                    <AuthorizeView Roles="SuperAdmin,Moderator">
+                                        <Authorized>
+                                            <td>
+                                                @if (editingCompanyItemId == itemId)
+                                                {
+                                                    <button class="btn btn-xs btn-success me-1"
+                                                            @onclick="() => SaveCompanyItem(itemId)">
+                                                        ✓
+                                                    </button>
+                                                    <button class="btn btn-xs btn-secondary"
+                                                            @onclick="() => editingCompanyItemId = 0">
+                                                        ✕
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <button class="btn btn-xs btn-warning me-1"
+                                                            @onclick="() => StartCompanyItemEdit(item.Item)">
+                                                        ✎
+                                                    </button>
+                                                    <button class="btn btn-xs btn-danger"
+                                                            @onclick="() => DeleteCompanyItem(itemId)">
+                                                        🗑
+                                                    </button>
+                                                }
+                                            </td>
+                                        </Authorized>
+                                    </AuthorizeView>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+
+        @* ===================================================================
+           БЛОК 2: ПЕРЕДАЧА МАЙНА РОТИ → ЕКІПАЖ
+        =================================================================== *@
+        <AuthorizeView Roles="SuperAdmin,Moderator">
+            <Authorized>
+                @if (crews != null && crews.Any() && companyItems.Any(i => i.Quantity > 0))
+                {
+                    <div class="card mb-4">
+                        <div class="card-header fw-bold">
+                            📦 Передати майно роти екіпажу
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3 align-items-end">
+                                <div class="col-md-3">
+                                    <label class="form-label">Майно роти</label>
+                                    <select class="form-select" @bind="transferItemId">
+                                        <option value="0">— оберіть позицію —</option>
+                                        @foreach (var item in companyItems.Where(i => i.Quantity > 0))
+                                        {
+                                            <option value="@item.Id">
+                                                @item.Name (@item.PropertyType?.Name) — @item.Quantity шт.
+                                            </option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Екіпаж</label>
+                                    <select class="form-select" @bind="transferCrewId">
+                                        <option value="0">— оберіть екіпаж —</option>
+                                        @foreach (var crew in crews)
+                                        {
+                                            <option value="@crew.Id">@crew.Name (@crew.Type)</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Кількість</label>
+                                    <input type="number" class="form-control"
+                                           min="1" @bind="transferQty" />
+                                </div>
+                                <div class="col-md-4">
+                                    <button class="btn btn-success w-100"
+                                            @onclick="TransferToCrewAsync">
+                                        ➡ Передати екіпажу
+                                    </button>
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Кількість</label>
-                                <input type="number" class="form-control" min="0"
-                                       @bind="editItemQuantity" />
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Тип</label>
-                                <select class="form-select" @bind="editItemTypeId">
+                            @if (!string.IsNullOrEmpty(transferMessage))
+                            {
+                                <div class="alert @(transferSuccess ? "alert-success" : "alert-danger") mt-3 mb-0">
+                                    @transferMessage
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </Authorized>
+        </AuthorizeView>
+
+        @* ===================================================================
+           БЛОК 3: МАЙНО ЕКІПАЖІВ
+        =================================================================== *@
+        @if (crews != null && crews.Any())
+        {
+            <ul class="nav nav-tabs mb-0">
+                @foreach (var crew in crews)
+                {
+                    var crewId = crew.Id;
+                    <li class="nav-item">
+                        <button class="nav-link @(selectedCrewId == crewId ? "active" : "")"
+                                @onclick="() => SelectCrew(crewId)">
+                            @crew.Name
+                            <span class="badge @(crew.Type == CrewType.FPV ? "bg-danger" : "bg-primary") ms-1"
+                                  style="font-size:0.65rem;">
+                                @crew.Type
+                            </span>
+                        </button>
+                    </li>
+                }
+            </ul>
+
+            @if (selectedCrew != null)
+            {
+                <div class="card card-top-property mb-4" style="border-top-left-radius:0; border-top-right-radius:0;">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span class="fw-bold">
+                            👥 Майно екіпажу — @selectedCrew.Name
+                            <span class="badge @(selectedCrew.Type == CrewType.FPV ? "bg-danger" : "bg-primary") ms-1">
+                                @selectedCrew.Type
+                            </span>
+                        </span>
+                        <span class="badge bg-secondary">@filteredCrewItems.Count поз.</span>
+                    </div>
+                    <div class="card-body p-0">
+
+                        @* Форма додавання майна екіпажу *@
+                        <AuthorizeView Roles="SuperAdmin,Moderator">
+                            <Authorized>
+                                <div class="p-3 border-bottom" style="background:#f8f9fa;">
+                                    <div class="row g-2 align-items-end">
+                                        <div class="col-md-4">
+                                            <label class="form-label">Назва</label>
+                                            <input class="form-control form-control-sm"
+                                                   @bind="newCrewItemName" placeholder="Назва майна" />
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">К-сть</label>
+                                            <input type="number" class="form-control form-control-sm"
+                                                   min="0" @bind="newCrewItemQty" />
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Тип</label>
+                                            <select class="form-select form-select-sm"
+                                                    @bind="newCrewItemTypeId">
+                                                <option value="0">— оберіть —</option>
+                                                @foreach (var pt in propertyTypes)
+                                                {
+                                                    <option value="@pt.Id">@pt.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <button class="btn btn-sm btn-primary w-100"
+                                                    @onclick="AddCrewItem">
+                                                + Додати майно екіпажу
+                                            </button>
+                                        </div>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(addCrewItemMessage))
+                                    {
+                                        <div class="alert @(addCrewItemSuccess ? "alert-success" : "alert-danger") mt-2 py-1 small mb-0">
+                                            @addCrewItemMessage
+                                        </div>
+                                    }
+                                </div>
+                            </Authorized>
+                        </AuthorizeView>
+
+                        @* Фільтр майна екіпажу *@
+                        <div class="p-3 border-bottom d-flex flex-wrap gap-2 align-items-end">
+                            <div>
+                                <label class="form-label mb-1 small">Тип</label>
+                                <select class="form-select form-select-sm" style="width:180px;"
+                                        @bind="filterCrewTypeId" @bind:after="ApplyCrewFilter">
+                                    <option value="0">— всі —</option>
                                     @foreach (var pt in propertyTypes)
                                     {
                                         <option value="@pt.Id">@pt.Name</option>
                                     }
                                 </select>
                             </div>
-                            @if (!string.IsNullOrEmpty(editItemMessage))
+                            <div>
+                                <label class="form-label mb-1 small">Назва</label>
+                                <input class="form-control form-control-sm" style="width:180px;"
+                                       placeholder="Пошук..." @bind="filterCrewName"
+                                       @bind:after="ApplyCrewFilter" />
+                            </div>
+                            <button class="btn btn-sm btn-outline-secondary"
+                                    @onclick="ResetCrewFilter">
+                                ✕ Скинути
+                            </button>
+                        </div>
+
+                        @if (!filteredCrewItems.Any())
+                        {
+                            <p class="text-muted p-3 mb-0">Майна для цього екіпажу немає.</p>
+                        }
+                        else
+                        {
+                            <table class="table table-sm table-hover mb-0">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Назва</th>
+                                        <th style="width:100px;">К-сть</th>
+                                        <th>Тип</th>
+                                        <th>Додав</th>
+                                        <AuthorizeView Roles="SuperAdmin,Moderator">
+                                            <Authorized><th style="width:90px;">Дії</th></Authorized>
+                                        </AuthorizeView>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in filteredCrewItems.Select((x, i) => new { Item = x, Index = i }))
+                                    {
+                                        var itemId = item.Item.Id;
+                                        var rowNum = (crewPage - 1) * crewPageSize + item.Index + 1;
+                                        <tr>
+                                            <td class="text-muted">@rowNum</td>
+                                            <td>@item.Item.Name</td>
+                                            <td>
+                                                <span class="badge @(item.Item.Quantity > 0 ? "bg-success" : "bg-danger")">
+                                                    @item.Item.Quantity
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-secondary">
+                                                    @item.Item.PropertyType?.Name
+                                                </span>
+                                            </td>
+                                            <td class="text-muted small">@item.Item.CreatedBy</td>
+                                            <AuthorizeView Roles="SuperAdmin,Moderator">
+                                                <Authorized>
+                                                    <td>
+                                                        <button class="btn btn-xs btn-warning me-1"
+                                                                @onclick="() => OpenCrewEditModal(item.Item)">
+                                                            ✎
+                                                        </button>
+                                                        <button class="btn btn-xs btn-danger"
+                                                                @onclick="() => DeleteCrewItem(itemId)">
+                                                            🗑
+                                                        </button>
+                                                    </td>
+                                                </Authorized>
+                                            </AuthorizeView>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+
+                            @if (crewTotalPages > 1)
                             {
-                                <div class="alert @(editItemSuccess ? "alert-success" : "alert-danger")">
-                                    @editItemMessage
+                                <div class="p-2">
+                                    <nav>
+                                        <ul class="pagination pagination-sm mb-1">
+                                            <li class="page-item @(crewPage == 1 ? "disabled" : "")">
+                                                <button class="page-link"
+                                                        @onclick="() => GoToCrewPage(crewPage - 1)">
+                                                    ‹
+                                                </button>
+                                            </li>
+                                            @for (int p = 1; p <= crewTotalPages; p++)
+                                            {
+                                                var pn = p;
+                                                <li class="page-item @(crewPage == pn ? "active" : "")">
+                                                    <button class="page-link"
+                                                            @onclick="() => GoToCrewPage(pn)">
+                                                        @pn
+                                                    </button>
+                                                </li>
+                                            }
+                                            <li class="page-item @(crewPage == crewTotalPages ? "disabled" : "")">
+                                                <button class="page-link"
+                                                        @onclick="() => GoToCrewPage(crewPage + 1)">
+                                                    ›
+                                                </button>
+                                            </li>
+                                        </ul>
+                                    </nav>
+                                    <p class="text-muted small mb-0">
+                                        Показано @filteredCrewItems.Count поз. Сторінка @crewPage з @crewTotalPages.
+                                    </p>
                                 </div>
                             }
-                        </div>
-                        <div class="modal-footer">
-                            <button class="btn btn-secondary" @onclick="CloseEditModal">
-                                Скасувати
-                            </button>
-                            <button class="btn btn-primary" @onclick="SaveEditItem">
-                                Зберегти
-                            </button>
-                        </div>
+                        }
                     </div>
                 </div>
-            </div>
-        }
-
-        @* ===== ФІЛЬТР ===== *@
-        <div class="d-flex flex-wrap gap-2 mb-3 align-items-end">
-            <div>
-                <label class="form-label mb-1 small">Тип</label>
-                <select class="form-select form-select-sm" style="width:220px;"
-                        @bind="filterTypeId" @bind:after="ApplyFilter">
-                    <option value="0">— всі —</option>
-                    @foreach (var pt in propertyTypes)
-                    {
-                        <option value="@pt.Id">@pt.Name</option>
-                    }
-                </select>
-            </div>
-            <div>
-                <label class="form-label mb-1 small">Назва</label>
-                <input class="form-control form-control-sm" style="width:200px;"
-                       placeholder="Пошук..."
-                       @bind="filterName" @bind:after="ApplyFilter" />
-            </div>
-            <button class="btn btn-sm btn-outline-secondary" @onclick="ResetFilter">
-                ✕ Скинути
-            </button>
-        </div>
-
-        @* ===== ТАБЛИЦЯ МАЙНА ===== *@
-        @if (!filteredItems.Any())
-        {
-            <p class="text-muted">Майна для цього екіпажу немає.</p>
+            }
         }
         else
         {
-            <table class="table table-bordered table-hover mb-4">
-                <thead class="table-dark">
-                    <tr>
-                        <th>#</th>
-                        <th>Назва</th>
-                        <th>Кількість</th>
-                        <th>Тип</th>
-                        <th>Додав</th>
-                        <AuthorizeView Roles="SuperAdmin,Moderator">
-                            <Authorized>
-                                <th style="width:90px;">Дії</th>
-                            </Authorized>
-                        </AuthorizeView>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var item in pagedItems.Select((x, i) => new { Item = x, Index = i }))
-                    {
-                        var itemId = item.Item.Id;
-                        var rowNum = (currentPage - 1) * pageSize + item.Index + 1;
-                        <tr>
-                            <td>@rowNum</td>
-                            <td>@item.Item.Name</td>
-                            <td>
-                                <span class="badge @(item.Item.Quantity > 0 ? "bg-success" : "bg-danger")">
-                                    @item.Item.Quantity
-                                </span>
-                            </td>
-                            <td>
-                                <span class="badge bg-secondary">
-                                    @item.Item.PropertyType?.Name
-                                </span>
-                            </td>
-                            <td class="text-muted small">@item.Item.CreatedBy</td>
-                            <AuthorizeView Roles="SuperAdmin,Moderator">
-                                <Authorized>
-                                    <td>
-                                        <button class="btn btn-xs btn-warning me-1"
-                                                @onclick="() => OpenEditModal(item.Item)">
-                                            ✎
-                                        </button>
-                                        <button class="btn btn-xs btn-danger"
-                                                @onclick="() => DeleteItem(itemId)">
-                                            🗑
-                                        </button>
-                                    </td>
-                                </Authorized>
-                            </AuthorizeView>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-
-            @if (totalPages > 1)
-            {
-                <nav>
-                    <ul class="pagination">
-                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
-                            <button class="page-link" @onclick="PrevPage">&#8249;</button>
-                        </li>
-                        @for (int p = 1; p <= totalPages; p++)
-                        {
-                            var pn = p;
-                            <li class="page-item @(currentPage == pn ? "active" : "")">
-                                <button class="page-link" @onclick="() => GoToPage(pn)">@pn</button>
-                            </li>
-                        }
-                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
-                            <button class="page-link" @onclick="NextPage">&#8250;</button>
-                        </li>
-                    </ul>
-                </nav>
-                <p class="text-muted small">
-                    Показано @pagedItems.Count() з @filteredItems.Count.
-                    Сторінка @currentPage з @totalPages.
-                </p>
-            }
+            <p class="text-muted">Екіпажів для цієї роти немає.</p>
         }
 
-        @* ===== ЖУРНАЛ ЗМІН ===== *@
-        <div class="card mt-4 border-secondary">
+        @* ===================================================================
+           БЛОК 4: НАКЛАДНІ
+        =================================================================== *@
+        <div class="card mb-4">
+            <div class="card-header fw-bold">📄 Накладні майна</div>
+            <div class="card-body">
+                <AuthorizeView Roles="SuperAdmin,Moderator">
+                    <Authorized>
+                        <div class="row g-3 mb-3 align-items-end">
+                            <div class="col-md-3">
+                                <label class="form-label">Номер накладної</label>
+                                <input class="form-control" @bind="newInvoiceNumber"
+                                       placeholder="Номер" />
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Дата</label>
+                                <input type="date" class="form-control" @bind="newInvoiceDate" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Файл (фото / PDF)</label>
+                                <InputFile OnChange="OnInvoiceFileSelected"
+                                           accept="image/*,.pdf" class="form-control" />
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-primary w-100" @onclick="AddInvoice">
+                                    Додати
+                                </button>
+                            </div>
+                        </div>
+                        @if (!string.IsNullOrEmpty(invoiceMessage))
+                        {
+                            <div class="alert @(invoiceSuccess ? "alert-success" : "alert-danger")">
+                                @invoiceMessage
+                            </div>
+                        }
+                    </Authorized>
+                </AuthorizeView>
+
+                @* Фільтр накладних *@
+                <div class="d-flex gap-2 mb-3 align-items-end flex-wrap">
+                    <div>
+                        <label class="form-label mb-1 small">Від</label>
+                        <input type="date" class="form-control form-control-sm"
+                               @bind="invoiceFilterFrom" @bind:after="ApplyInvoiceFilter" />
+                    </div>
+                    <div>
+                        <label class="form-label mb-1 small">До</label>
+                        <input type="date" class="form-control form-control-sm"
+                               @bind="invoiceFilterTo" @bind:after="ApplyInvoiceFilter" />
+                    </div>
+                    <div>
+                        <label class="form-label mb-1 small">Номер</label>
+                        <input class="form-control form-control-sm" style="width:150px;"
+                               @bind="invoiceFilterNumber" @bind:after="ApplyInvoiceFilter"
+                               placeholder="Пошук..." />
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="ResetInvoiceFilter">
+                        ✕ Скинути
+                    </button>
+                </div>
+
+                @if (!filteredInvoices.Any())
+                {
+                    <p class="text-muted">Накладних немає.</p>
+                }
+                else
+                {
+                    <table class="table table-sm table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th @onclick='() => SortInvoices("number")' style="cursor:pointer">
+                                    Номер @InvoiceSortIcon("number")
+                                </th>
+                                <th @onclick='() => SortInvoices("date")' style="cursor:pointer">
+                                    Дата @InvoiceSortIcon("date")
+                                </th>
+                                <th>Файл</th>
+                                <th>Додав</th>
+                                <AuthorizeView Roles="SuperAdmin,Moderator">
+                                    <Authorized><th style="width:60px;">Дії</th></Authorized>
+                                </AuthorizeView>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var inv in pagedInvoices)
+                            {
+                                var invId = inv.Id;
+                                <tr>
+                                    <td>@inv.InvoiceNumber</td>
+                                    <td>@inv.Date.ToString("dd.MM.yyyy")</td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(inv.PhotoPath))
+                                        {
+                                            <a href="@inv.PhotoPath" target="_blank"
+                                               class="btn btn-xs btn-outline-info">
+                                                📎 Переглянути
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                    <td class="text-muted small">@inv.CreatedBy</td>
+                                    <AuthorizeView Roles="SuperAdmin,Moderator">
+                                        <Authorized>
+                                            <td>
+                                                <button class="btn btn-xs btn-danger"
+                                                        @onclick="() => DeleteInvoice(invId)">
+                                                    🗑
+                                                </button>
+                                            </td>
+                                        </Authorized>
+                                    </AuthorizeView>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+
+                    @if (invoiceTotalPages > 1)
+                    {
+                        <nav>
+                            <ul class="pagination pagination-sm mt-2">
+                                <li class="page-item @(invoicePage == 1 ? "disabled" : "")">
+                                    <button class="page-link"
+                                            @onclick="() => GoToInvoicePage(invoicePage - 1)">
+                                        ‹
+                                    </button>
+                                </li>
+                                @for (int p = 1; p <= invoiceTotalPages; p++)
+                                {
+                                    var pn = p;
+                                    <li class="page-item @(invoicePage == pn ? "active" : "")">
+                                        <button class="page-link"
+                                                @onclick="() => GoToInvoicePage(pn)">
+                                            @pn
+                                        </button>
+                                    </li>
+                                }
+                                <li class="page-item @(invoicePage == invoiceTotalPages ? "disabled" : "")">
+                                    <button class="page-link"
+                                            @onclick="() => GoToInvoicePage(invoicePage + 1)">
+                                        ›
+                                    </button>
+                                </li>
+                            </ul>
+                        </nav>
+                        <p class="text-muted small">
+                            Всього: @filteredInvoices.Count. Сторінка @invoicePage з @invoiceTotalPages.
+                        </p>
+                    }
+                }
+            </div>
+        </div>
+
+        @* ===================================================================
+           БЛОК 5: ЖУРНАЛ ЗМІН
+        =================================================================== *@
+        <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center"
                  style="cursor:pointer;" @onclick="ToggleLog">
-                <span class="fw-bold text-secondary">📋 Журнал змін</span>
-                <span>@(showLog ? "▲" : "▼")</span>
+                <span class="fw-bold text-muted">📋 Журнал змін майна</span>
+                <span class="text-muted">@(showLog ? "▲" : "▼")</span>
             </div>
             @if (showLog)
             {
@@ -358,10 +727,11 @@ else
                     }
                     else
                     {
-                        <table class="table table-sm table-striped mb-0">
-                            <thead class="table-secondary">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-dark">
                                 <tr>
                                     <th>Дата/час</th>
+                                    <th>Рівень</th>
                                     <th>Дія</th>
                                     <th>Майно</th>
                                     <th>Деталі</th>
@@ -369,11 +739,17 @@ else
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var log in logs.Take(100))
+                                @foreach (var log in logs.Take(200))
                                 {
                                     <tr>
                                         <td class="text-muted small text-nowrap">
                                             @log.CreatedAt.ToString("dd.MM.yyyy HH:mm")
+                                        </td>
+                                        <td>
+                                            <span class="badge @(log.Level == "Рота" ? "bg-info" : "bg-primary")"
+                                                  style="font-size:0.65rem;">
+                                                @log.Level
+                                            </span>
                                         </td>
                                         <td>
                                             <span class="badge @GetActionBadge(log.Action)">
@@ -394,6 +770,53 @@ else
     }
 }
 
+@* ===================================================================
+   МОДАЛКА РЕДАГУВАННЯ МАЙНА ЕКІПАЖУ
+=================================================================== *@
+@if (showCrewEditModal)
+{
+    <div class="modal d-block" style="background:rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">✏️ Редагувати майно екіпажу</h5>
+                    <button class="btn-close" @onclick="CloseCrewEditModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Назва</label>
+                        <input class="form-control" @bind="editCrewItemName" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Кількість</label>
+                        <input type="number" class="form-control" min="0"
+                               @bind="editCrewItemQty" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Тип</label>
+                        <select class="form-select" @bind="editCrewItemTypeId">
+                            @foreach (var pt in propertyTypes)
+                            {
+                                <option value="@pt.Id">@pt.Name</option>
+                            }
+                        </select>
+                    </div>
+                    @if (!string.IsNullOrEmpty(editCrewItemMessage))
+                    {
+                        <div class="alert @(editCrewItemSuccess ? "alert-success" : "alert-danger")">
+                            @editCrewItemMessage
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseCrewEditModal">Скасувати</button>
+                    <button class="btn btn-primary" @onclick="SaveCrewEditItem">Зберегти</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 <style>
     .btn-xs {
         padding: 0.1rem 0.4rem;
@@ -402,303 +825,595 @@ else
 </style>
 
 @code {
+    // ── Загальне ────────────────────────────────────────────────────────────
     private List<Company>? companies;
     private int selectedCompanyId;
+    private Company? selectedCompany;
+    private string currentUser = "";
+
+    private List<PropertyType> propertyTypes = new();
+
+    // ── Майно РОТИ ──────────────────────────────────────────────────────────
+    private List<CompanyPropertyItem> companyItems = new();
+    private List<CompanyPropertyItem> filteredCompanyItems = new();
+
+    private string newCompanyItemName = "";
+    private int newCompanyItemQty = 1;
+    private int newCompanyItemTypeId = 0;
+    private string addCompanyItemMessage = "";
+    private bool addCompanyItemSuccess;
+
+    private int editingCompanyItemId = 0;
+    private string editingCompanyItemName = "";
+    private int editingCompanyItemQty;
+    private int editingCompanyItemTypeId;
+
+    private int filterCompanyTypeId = 0;
+    private string filterCompanyName = "";
+
+    // ── Передача роти → екіпаж ──────────────────────────────────────────────
+    private int transferItemId = 0;
+    private int transferCrewId = 0;
+    private int transferQty = 1;
+    private string transferMessage = "";
+    private bool transferSuccess;
+
+    // ── Екіпажі ─────────────────────────────────────────────────────────────
     private List<Crew>? crews;
     private int selectedCrewId;
     private Crew? selectedCrew;
 
-    private List<PropertyType> propertyTypes = new();
-    private List<PropertyItem> allItems = new();
-    private List<PropertyItem> filteredItems = new();
-    private IEnumerable<PropertyItem> pagedItems = new List<PropertyItem>();
-    private List<PropertyLog> logs = new();
+    // ── Майно ЕКІПАЖУ ───────────────────────────────────────────────────────
+    private List<PropertyItem> allCrewItems = new();
+    private List<PropertyItem> filteredCrewItems = new();
 
-    // Типи
-    private bool showTypeManager = false;
+    private string newCrewItemName = "";
+    private int newCrewItemQty = 1;
+    private int newCrewItemTypeId = 0;
+    private string addCrewItemMessage = "";
+    private bool addCrewItemSuccess;
+
+    private int filterCrewTypeId = 0;
+    private string filterCrewName = "";
+
+    private int crewPage = 1;
+    private int crewPageSize = 15;
+    private int crewTotalPages =>
+        (int)Math.Ceiling(filteredCrewItems.Count / (double)crewPageSize);
+
+    // Модалка редагування майна екіпажу
+    private bool showCrewEditModal;
+    private int editingCrewItemId;
+    private string editCrewItemName = "";
+    private int editCrewItemQty;
+    private int editCrewItemTypeId;
+    private string editCrewItemMessage = "";
+    private bool editCrewItemSuccess;
+
+    // ── Накладні ────────────────────────────────────────────────────────────
+    private List<PropertyInvoice> allInvoices = new();
+    private List<PropertyInvoice> filteredInvoices = new();
+    private List<PropertyInvoice> pagedInvoices = new();
+
+    private string newInvoiceNumber = "";
+    private DateOnly newInvoiceDate = DateOnly.FromDateTime(DateTime.Today);
+    private IBrowserFile? invoiceFile;
+    private string invoiceMessage = "";
+    private bool invoiceSuccess;
+
+    private int invoicePage = 1;
+    private int invoicePageSize = 10;
+    private int invoiceTotalPages =>
+        (int)Math.Ceiling(filteredInvoices.Count / (double)invoicePageSize);
+    private string invoiceFilterNumber = "";
+    private DateOnly? invoiceFilterFrom;
+    private DateOnly? invoiceFilterTo;
+    private string invoiceSortField = "date";
+    private bool invoiceSortDesc = true;
+
+    // ── Журнал ──────────────────────────────────────────────────────────────
+    private List<PropertyLog> logs = new();
+    private bool showLog;
+
+    // ── Типи ────────────────────────────────────────────────────────────────
+    private bool showTypeManager;
     private string newTypeName = "";
     private bool typeSuccess;
     private string typeMessage = "";
-    private int editingTypeId = 0;
+    private int editingTypeId;
     private string editTypeName = "";
 
-    // Додавання
-    private string newItemName = "";
-    private int newItemQuantity = 1;
-    private int newItemTypeId = 0;
-    private string addItemMessage = "";
-    private bool addItemSuccess;
-
-    // Редагування
-    private bool showEditModal = false;
-    private int editingItemId = 0;
-    private string editItemName = "";
-    private int editItemQuantity;
-    private int editItemTypeId;
-    private string editItemMessage = "";
-    private bool editItemSuccess;
-
-    // Фільтри
-    private int filterTypeId = 0;
-    private string filterName = "";
-
-    // Пагінація
-    private int currentPage = 1;
-    private int pageSize = 15;
-    private int totalPages =>
-        (int)Math.Ceiling(filteredItems.Count / (double)pageSize);
-
-    // Журнал
-    private bool showLog = false;
-
+    // ════════════════════════════════════════════════════════════════════════
+    // ІНІЦІАЛІЗАЦІЯ
+    // ════════════════════════════════════════════════════════════════════════
     protected override async Task OnInitializedAsync()
     {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        currentUser = auth.User.Identity?.Name ?? "";
+
         companies = await Db.Companies.OrderBy(c => c.SortOrder).ToListAsync();
         await LoadTypes();
+
         if (companies.Any())
         {
             selectedCompanyId = companies.First().Id;
-            await LoadCrews();
+            selectedCompany = companies.First();
+            await LoadCompanyData();
         }
     }
 
     private async Task LoadTypes()
     {
-        propertyTypes = await Db.PropertyTypes.OrderBy(t => t.SortOrder).ThenBy(t => t.Name).ToListAsync();
+        propertyTypes = await Db.PropertyTypes
+            .OrderBy(t => t.SortOrder).ThenBy(t => t.Name).ToListAsync();
     }
 
+    // ════════════════════════════════════════════════════════════════════════
+    // ВИБІР РОТИ
+    // ════════════════════════════════════════════════════════════════════════
     private async Task SelectCompany(int id)
     {
         selectedCompanyId = id;
+        selectedCompany = companies?.FirstOrDefault(c => c.Id == id);
         selectedCrewId = 0;
         selectedCrew = null;
-        await LoadCrews();
+        transferItemId = 0;
+        transferCrewId = 0;
+        editingCompanyItemId = 0;
+        await LoadCompanyData();
     }
 
-    private async Task LoadCrews()
+    private async Task LoadCompanyData()
     {
+        // Майно роти
+        companyItems = await Db.CompanyPropertyItems
+            .Where(i => i.CompanyId == selectedCompanyId)
+            .Include(i => i.PropertyType)
+            .OrderBy(i => i.PropertyType.Name).ThenBy(i => i.Name)
+            .ToListAsync();
+        ApplyCompanyFilter();
+
+        // Екіпажі
         crews = await Db.Crews
             .Where(c => c.CompanyId == selectedCompanyId)
             .OrderBy(c => c.SortOrder).ToListAsync();
 
-        if (crews.Any())
+        if (crews.Any() && selectedCrewId == 0)
         {
             selectedCrewId = crews.First().Id;
             selectedCrew = crews.First();
-            await LoadData();
+        }
+        else if (selectedCrewId != 0)
+        {
+            selectedCrew = crews?.FirstOrDefault(c => c.Id == selectedCrewId);
+        }
+
+        if (selectedCrew != null)
+            await LoadCrewItems();
+
+        // Накладні
+        allInvoices = await Db.PropertyInvoices
+            .Where(i => i.CompanyId == selectedCompanyId)
+            .OrderByDescending(i => i.Date).ToListAsync();
+        ApplyInvoiceFilter();
+
+        // Журнал
+        logs = await Db.PropertyLogs
+            .Where(l => l.CompanyId == selectedCompanyId)
+            .OrderByDescending(l => l.CreatedAt)
+            .ToListAsync();
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // МАЙНО РОТИ — CRUD
+    // ════════════════════════════════════════════════════════════════════════
+    private async Task AddCompanyItem()
+    {
+        addCompanyItemMessage = "";
+        if (string.IsNullOrWhiteSpace(newCompanyItemName))
+        {
+            addCompanyItemMessage = "Введіть назву.";
+            addCompanyItemSuccess = false; return;
+        }
+        if (newCompanyItemTypeId == 0)
+        {
+            addCompanyItemMessage = "Оберіть тип.";
+            addCompanyItemSuccess = false; return;
+        }
+
+        var typeName = propertyTypes.FirstOrDefault(t => t.Id == newCompanyItemTypeId)?.Name ?? "";
+        var item = new CompanyPropertyItem
+        {
+            CompanyId = selectedCompanyId,
+            Name = newCompanyItemName.Trim(),
+            Quantity = newCompanyItemQty,
+            PropertyTypeId = newCompanyItemTypeId,
+            CreatedBy = currentUser,
+            CreatedAt = DateTime.Now
+        };
+        Db.CompanyPropertyItems.Add(item);
+        await AddLog("Рота", "Додано", newCompanyItemName.Trim(),
+            $"К-сть: {newCompanyItemQty}, Тип: {typeName}");
+        await Db.SaveChangesAsync();
+
+        addCompanyItemMessage = "Майно додано.";
+        addCompanyItemSuccess = true;
+        newCompanyItemName = ""; newCompanyItemQty = 1; newCompanyItemTypeId = 0;
+        await LoadCompanyData();
+    }
+
+    private void StartCompanyItemEdit(CompanyPropertyItem item)
+    {
+        editingCompanyItemId = item.Id;
+        editingCompanyItemName = item.Name;
+        editingCompanyItemQty = item.Quantity;
+        editingCompanyItemTypeId = item.PropertyTypeId;
+    }
+
+    private async Task SaveCompanyItem(int id)
+    {
+        var item = await Db.CompanyPropertyItems.FindAsync(id);
+        if (item != null)
+        {
+            var typeName = propertyTypes.FirstOrDefault(t => t.Id == editingCompanyItemTypeId)?.Name ?? "";
+            await AddLog("Рота", "Змінено", item.Name,
+                $"К-сть: {item.Quantity}→{editingCompanyItemQty}, Тип: {typeName}");
+            item.Name = editingCompanyItemName.Trim();
+            item.Quantity = editingCompanyItemQty;
+            item.PropertyTypeId = editingCompanyItemTypeId;
+            await Db.SaveChangesAsync();
+        }
+        editingCompanyItemId = 0;
+        await LoadCompanyData();
+    }
+
+    private async Task DeleteCompanyItem(int id)
+    {
+        var item = await Db.CompanyPropertyItems.FindAsync(id);
+        if (item != null)
+        {
+            await AddLog("Рота", "Видалено", item.Name, $"К-сть: {item.Quantity}");
+            Db.CompanyPropertyItems.Remove(item);
+            await Db.SaveChangesAsync();
+        }
+        await LoadCompanyData();
+    }
+
+    private void ApplyCompanyFilter()
+    {
+        filteredCompanyItems = companyItems.Where(i =>
+        {
+            if (filterCompanyTypeId != 0 && i.PropertyTypeId != filterCompanyTypeId) return false;
+            if (!string.IsNullOrEmpty(filterCompanyName) &&
+                !i.Name.Contains(filterCompanyName, StringComparison.OrdinalIgnoreCase)) return false;
+            return true;
+        }).ToList();
+    }
+
+    private void ResetCompanyFilter()
+    {
+        filterCompanyTypeId = 0; filterCompanyName = "";
+        ApplyCompanyFilter();
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ПЕРЕДАЧА РОТИ → ЕКІПАЖ
+    // ════════════════════════════════════════════════════════════════════════
+    private async Task TransferToCrewAsync()
+    {
+        transferMessage = "";
+        if (transferItemId == 0) { transferMessage = "Оберіть позицію."; transferSuccess = false; return; }
+        if (transferCrewId == 0) { transferMessage = "Оберіть екіпаж."; transferSuccess = false; return; }
+        if (transferQty <= 0) { transferMessage = "Кількість має бути > 0."; transferSuccess = false; return; }
+
+        var src = await Db.CompanyPropertyItems
+            .Include(i => i.PropertyType).FirstOrDefaultAsync(i => i.Id == transferItemId);
+        if (src == null || src.Quantity < transferQty)
+        {
+            transferMessage = "Недостатня кількість у роти."; transferSuccess = false; return;
+        }
+
+        // Зменшуємо у роти
+        src.Quantity -= transferQty;
+
+        // Шукаємо чи є вже таке майно в екіпажі
+        var dest = await Db.PropertyItems
+            .FirstOrDefaultAsync(i => i.CrewId == transferCrewId
+                && i.Name == src.Name
+                && i.PropertyTypeId == src.PropertyTypeId);
+
+        if (dest != null)
+        {
+            dest.Quantity += transferQty;
         }
         else
         {
-            selectedCrew = null;
-            allItems = new();
-            filteredItems = new();
-            logs = new();
+            Db.PropertyItems.Add(new PropertyItem
+            {
+                CrewId = transferCrewId,
+                Name = src.Name,
+                Quantity = transferQty,
+                PropertyTypeId = src.PropertyTypeId,
+                CreatedBy = currentUser,
+                CreatedAt = DateTime.Now
+            });
         }
+
+        var crewName = crews?.FirstOrDefault(c => c.Id == transferCrewId)?.Name ?? "";
+        await AddLog("Рота", "Передано", src.Name,
+            $"Передано {transferQty} шт. екіпажу «{crewName}»");
+        await Db.SaveChangesAsync();
+
+        transferMessage = $"Передано {transferQty} шт. «{src.Name}» екіпажу «{crewName}».";
+        transferSuccess = true;
+        transferItemId = 0; transferQty = 1;
+        await LoadCompanyData();
     }
 
+    // ════════════════════════════════════════════════════════════════════════
+    // ВИБІР ЕКІПАЖУ + МАЙНО ЕКІПАЖУ
+    // ════════════════════════════════════════════════════════════════════════
     private async Task SelectCrew(int id)
     {
         selectedCrewId = id;
         selectedCrew = crews?.FirstOrDefault(c => c.Id == id);
-        currentPage = 1;
-        filterTypeId = 0;
-        filterName = "";
-        await LoadData();
+        crewPage = 1; filterCrewTypeId = 0; filterCrewName = "";
+        addCrewItemMessage = "";
+        await LoadCrewItems();
     }
 
-    private async Task LoadData()
+    private async Task LoadCrewItems()
     {
-        allItems = await Db.PropertyItems
+        allCrewItems = await Db.PropertyItems
             .Where(i => i.CrewId == selectedCrewId)
             .Include(i => i.PropertyType)
             .OrderBy(i => i.PropertyType.Name).ThenBy(i => i.Name)
             .ToListAsync();
-
-        logs = await Db.PropertyLogs
-            .Where(l => l.CrewId == selectedCrewId)
-            .OrderByDescending(l => l.CreatedAt)
-            .ToListAsync();
-
-        ApplyFilter();
+        ApplyCrewFilter();
     }
 
-    private void ApplyFilter()
+    private void ApplyCrewFilter()
     {
-        filteredItems = allItems.Where(i =>
+        var q = allCrewItems.Where(i =>
         {
-            if (filterTypeId != 0 && i.PropertyTypeId != filterTypeId) return false;
-            if (!string.IsNullOrEmpty(filterName) &&
-                !i.Name.Contains(filterName, StringComparison.OrdinalIgnoreCase)) return false;
+            if (filterCrewTypeId != 0 && i.PropertyTypeId != filterCrewTypeId) return false;
+            if (!string.IsNullOrEmpty(filterCrewName) &&
+                !i.Name.Contains(filterCrewName, StringComparison.OrdinalIgnoreCase)) return false;
             return true;
         }).ToList();
-        currentPage = 1;
-        UpdatePagedItems();
+        filteredCrewItems = q
+            .Skip((crewPage - 1) * crewPageSize).Take(crewPageSize).ToList();
     }
 
-    private void ResetFilter()
+    private void ResetCrewFilter()
     {
-        filterTypeId = 0;
-        filterName = "";
-        ApplyFilter();
+        filterCrewTypeId = 0; filterCrewName = ""; crewPage = 1;
+        ApplyCrewFilter();
     }
 
-    private void UpdatePagedItems()
+    private void GoToCrewPage(int p)
     {
-        pagedItems = filteredItems.Skip((currentPage - 1) * pageSize).Take(pageSize);
+        if (p >= 1 && p <= crewTotalPages) { crewPage = p; ApplyCrewFilter(); }
     }
 
-    private string GetUser(System.Security.Claims.ClaimsPrincipal user)
-        => user.Identity?.Name ?? "";
-
-    private async Task AddItem()
+    private async Task AddCrewItem()
     {
-        addItemMessage = "";
-        try
+        addCrewItemMessage = "";
+        if (string.IsNullOrWhiteSpace(newCrewItemName))
         {
-            var auth = await AuthStateProvider.GetAuthenticationStateAsync();
-            var user = GetUser(auth.User);
-
-            if (string.IsNullOrWhiteSpace(newItemName))
-                throw new Exception("Введіть назву");
-            if (newItemTypeId == 0)
-                throw new Exception("Оберіть тип");
-            if (newItemQuantity < 0)
-                throw new Exception("Кількість не може бути від'ємною");
-
-            var typeName = propertyTypes.FirstOrDefault(t => t.Id == newItemTypeId)?.Name ?? "";
-
-            var item = new PropertyItem
-            {
-                CrewId = selectedCrewId,
-                Name = newItemName.Trim(),
-                Quantity = newItemQuantity,
-                PropertyTypeId = newItemTypeId,
-                CreatedAt = DateTime.Now,
-                CreatedBy = user
-            };
-            Db.PropertyItems.Add(item);
-
-            Db.PropertyLogs.Add(new PropertyLog
-            {
-                CrewId = selectedCrewId,
-                Action = "Додано",
-                ItemName = newItemName.Trim(),
-                Details = $"Кількість: {newItemQuantity}, Тип: {typeName}",
-                CreatedAt = DateTime.Now,
-                CreatedBy = user
-            });
-
-            await Db.SaveChangesAsync();
-            addItemMessage = "Майно додано";
-            addItemSuccess = true;
-            newItemName = "";
-            newItemQuantity = 1;
-            newItemTypeId = 0;
-            await LoadData();
+            addCrewItemMessage = "Введіть назву."; addCrewItemSuccess = false; return;
         }
-        catch (Exception ex)
+        if (newCrewItemTypeId == 0)
         {
-            addItemMessage = ex.Message;
-            addItemSuccess = false;
+            addCrewItemMessage = "Оберіть тип."; addCrewItemSuccess = false; return;
         }
-    }
 
-    private void OpenEditModal(PropertyItem item)
-    {
-        editingItemId = item.Id;
-        editItemName = item.Name;
-        editItemQuantity = item.Quantity;
-        editItemTypeId = item.PropertyTypeId;
-        editItemMessage = "";
-        editItemSuccess = false;
-        showEditModal = true;
-    }
-
-    private void CloseEditModal()
-    {
-        showEditModal = false;
-        editingItemId = 0;
-        editItemMessage = "";
-    }
-
-    private async Task SaveEditItem()
-    {
-        editItemMessage = "";
-        try
-        {
-            var auth = await AuthStateProvider.GetAuthenticationStateAsync();
-            var user = GetUser(auth.User);
-
-            var item = await Db.PropertyItems.Include(i => i.PropertyType)
-                .FirstOrDefaultAsync(i => i.Id == editingItemId);
-            if (item == null) throw new Exception("Запис не знайдено");
-
-            if (string.IsNullOrWhiteSpace(editItemName))
-                throw new Exception("Введіть назву");
-            if (editItemQuantity < 0)
-                throw new Exception("Кількість не може бути від'ємною");
-
-            var oldName = item.Name;
-            var oldQty = item.Quantity;
-            var oldType = item.PropertyType?.Name ?? "";
-            var newTypeName = propertyTypes.FirstOrDefault(t => t.Id == editItemTypeId)?.Name ?? "";
-
-            item.Name = editItemName.Trim();
-            item.Quantity = editItemQuantity;
-            item.PropertyTypeId = editItemTypeId;
-
-            var details = new List<string>();
-            if (oldName != item.Name) details.Add($"Назва: {oldName} → {item.Name}");
-            if (oldQty != item.Quantity) details.Add($"К-сть: {oldQty} → {item.Quantity}");
-            if (oldType != newTypeName) details.Add($"Тип: {oldType} → {newTypeName}");
-
-            Db.PropertyLogs.Add(new PropertyLog
-            {
-                CrewId = selectedCrewId,
-                Action = "Змінено",
-                ItemName = item.Name,
-                Details = details.Any() ? string.Join(", ", details) : "без змін",
-                CreatedAt = DateTime.Now,
-                CreatedBy = user
-            });
-
-            await Db.SaveChangesAsync();
-            editItemMessage = "Збережено";
-            editItemSuccess = true;
-            await LoadData();
-        }
-        catch (Exception ex)
-        {
-            editItemMessage = ex.Message;
-            editItemSuccess = false;
-        }
-    }
-
-    private async Task DeleteItem(int itemId)
-    {
-        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
-        var user = GetUser(auth.User);
-
-        var item = await Db.PropertyItems.Include(i => i.PropertyType)
-            .FirstOrDefaultAsync(i => i.Id == itemId);
-        if (item == null) return;
-
-        Db.PropertyLogs.Add(new PropertyLog
+        var typeName = propertyTypes.FirstOrDefault(t => t.Id == newCrewItemTypeId)?.Name ?? "";
+        Db.PropertyItems.Add(new PropertyItem
         {
             CrewId = selectedCrewId,
-            Action = "Видалено",
-            ItemName = item.Name,
-            Details = $"Кількість: {item.Quantity}, Тип: {item.PropertyType?.Name}",
-            CreatedAt = DateTime.Now,
-            CreatedBy = user
+            Name = newCrewItemName.Trim(),
+            Quantity = newCrewItemQty,
+            PropertyTypeId = newCrewItemTypeId,
+            CreatedBy = currentUser,
+            CreatedAt = DateTime.Now
         });
-
-        Db.PropertyItems.Remove(item);
+        await AddLog("Екіпаж", "Додано", newCrewItemName.Trim(),
+            $"К-сть: {newCrewItemQty}, Тип: {typeName}, Екіпаж: {selectedCrew?.Name}");
         await Db.SaveChangesAsync();
-        await LoadData();
+
+        addCrewItemMessage = "Майно додано."; addCrewItemSuccess = true;
+        newCrewItemName = ""; newCrewItemQty = 1; newCrewItemTypeId = 0;
+        await LoadCrewItems();
     }
 
-    // ===== ТИПИ =====
+    private void OpenCrewEditModal(PropertyItem item)
+    {
+        editingCrewItemId = item.Id;
+        editCrewItemName = item.Name;
+        editCrewItemQty = item.Quantity;
+        editCrewItemTypeId = item.PropertyTypeId;
+        editCrewItemMessage = ""; editCrewItemSuccess = false;
+        showCrewEditModal = true;
+    }
+
+    private void CloseCrewEditModal()
+    {
+        showCrewEditModal = false; editingCrewItemId = 0; editCrewItemMessage = "";
+    }
+
+    private async Task SaveCrewEditItem()
+    {
+        editCrewItemMessage = "";
+        var item = await Db.PropertyItems.Include(i => i.PropertyType)
+            .FirstOrDefaultAsync(i => i.Id == editingCrewItemId);
+        if (item == null) { editCrewItemMessage = "Не знайдено."; return; }
+
+        var typeName = propertyTypes.FirstOrDefault(t => t.Id == editCrewItemTypeId)?.Name ?? "";
+        await AddLog("Екіпаж", "Змінено", item.Name,
+            $"К-сть: {item.Quantity}→{editCrewItemQty}");
+        item.Name = editCrewItemName.Trim();
+        item.Quantity = editCrewItemQty;
+        item.PropertyTypeId = editCrewItemTypeId;
+        await Db.SaveChangesAsync();
+
+        editCrewItemMessage = "Збережено."; editCrewItemSuccess = true;
+        await LoadCrewItems();
+    }
+
+    private async Task DeleteCrewItem(int id)
+    {
+        var item = await Db.PropertyItems.FindAsync(id);
+        if (item != null)
+        {
+            await AddLog("Екіпаж", "Видалено", item.Name,
+                $"К-сть: {item.Quantity}, Екіпаж: {selectedCrew?.Name}");
+            Db.PropertyItems.Remove(item);
+            await Db.SaveChangesAsync();
+        }
+        await LoadCrewItems();
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // НАКЛАДНІ
+    // ════════════════════════════════════════════════════════════════════════
+    private void OnInvoiceFileSelected(InputFileChangeEventArgs e) => invoiceFile = e.File;
+
+    private async Task AddInvoice()
+    {
+        invoiceMessage = "";
+        if (string.IsNullOrWhiteSpace(newInvoiceNumber))
+        {
+            invoiceMessage = "Введіть номер накладної."; invoiceSuccess = false; return;
+        }
+
+        string? photoPath = null;
+        if (invoiceFile != null)
+        {
+            var dir = Path.Combine(Env.WebRootPath, "uploads", "property-invoices");
+            Directory.CreateDirectory(dir);
+            var ext = Path.GetExtension(invoiceFile.Name);
+            var fileName = $"{Guid.NewGuid()}{ext}";
+            await using var fs = new FileStream(Path.Combine(dir, fileName), FileMode.Create);
+            await invoiceFile.OpenReadStream(10 * 1024 * 1024).CopyToAsync(fs);
+            photoPath = $"/uploads/property-invoices/{fileName}";
+        }
+
+        Db.PropertyInvoices.Add(new PropertyInvoice
+        {
+            CompanyId = selectedCompanyId,
+            InvoiceNumber = newInvoiceNumber.Trim(),
+            Date = newInvoiceDate,
+            PhotoPath = photoPath,
+            CreatedBy = currentUser,
+            CreatedAt = DateTime.Now
+        });
+        await Db.SaveChangesAsync();
+
+        invoiceMessage = "Накладну додано."; invoiceSuccess = true;
+        newInvoiceNumber = "";
+        newInvoiceDate = DateOnly.FromDateTime(DateTime.Today);
+        invoiceFile = null;
+        await LoadCompanyData();
+    }
+
+    private async Task DeleteInvoice(int id)
+    {
+        var inv = await Db.PropertyInvoices.FindAsync(id);
+        if (inv != null)
+        {
+            if (!string.IsNullOrEmpty(inv.PhotoPath))
+            {
+                var path = Path.Combine(Env.WebRootPath,
+                    inv.PhotoPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+                if (File.Exists(path)) File.Delete(path);
+            }
+            Db.PropertyInvoices.Remove(inv);
+            await Db.SaveChangesAsync();
+        }
+        await LoadCompanyData();
+    }
+
+    private void ApplyInvoiceFilter()
+    {
+        var q = allInvoices.AsEnumerable();
+        if (!string.IsNullOrEmpty(invoiceFilterNumber))
+            q = q.Where(i => i.InvoiceNumber.Contains(
+                invoiceFilterNumber, StringComparison.OrdinalIgnoreCase));
+        if (invoiceFilterFrom.HasValue) q = q.Where(i => i.Date >= invoiceFilterFrom.Value);
+        if (invoiceFilterTo.HasValue) q = q.Where(i => i.Date <= invoiceFilterTo.Value);
+
+        q = invoiceSortField == "number"
+            ? (invoiceSortDesc ? q.OrderByDescending(i => i.InvoiceNumber)
+                               : q.OrderBy(i => i.InvoiceNumber))
+            : (invoiceSortDesc ? q.OrderByDescending(i => i.Date)
+                               : q.OrderBy(i => i.Date));
+
+        filteredInvoices = q.ToList();
+        invoicePage = 1;
+        UpdatePagedInvoices();
+    }
+
+    private void ResetInvoiceFilter()
+    {
+        invoiceFilterNumber = ""; invoiceFilterFrom = null; invoiceFilterTo = null;
+        ApplyInvoiceFilter();
+    }
+
+    private void SortInvoices(string field)
+    {
+        if (invoiceSortField == field) invoiceSortDesc = !invoiceSortDesc;
+        else { invoiceSortField = field; invoiceSortDesc = true; }
+        ApplyInvoiceFilter();
+    }
+
+    private string InvoiceSortIcon(string field) =>
+        invoiceSortField != field ? "" : (invoiceSortDesc ? " ↓" : " ↑");
+
+    private void UpdatePagedInvoices()
+    {
+        pagedInvoices = filteredInvoices
+            .Skip((invoicePage - 1) * invoicePageSize).Take(invoicePageSize).ToList();
+    }
+
+    private void GoToInvoicePage(int p)
+    {
+        if (p >= 1 && p <= invoiceTotalPages) { invoicePage = p; UpdatePagedInvoices(); }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ЖУРНАЛ
+    // ════════════════════════════════════════════════════════════════════════
+    private async Task AddLog(string level, string action, string itemName, string details)
+    {
+        Db.PropertyLogs.Add(new PropertyLog
+        {
+            CompanyId = selectedCompanyId,
+            CrewId = level == "Екіпаж" ? selectedCrewId : null,
+            Level = level,
+            Action = action,
+            ItemName = itemName,
+            Details = details,
+            CreatedBy = currentUser,
+            CreatedAt = DateTime.Now
+        });
+        await Db.SaveChangesAsync();
+    }
+
+    private void ToggleLog() => showLog = !showLog;
+
+    private string GetActionBadge(string action) => action switch
+    {
+        "Додано" => "bg-success",
+        "Змінено" => "bg-warning text-dark",
+        "Видалено" => "bg-danger",
+        "Передано" => "bg-info",
+        _ => "bg-secondary"
+    };
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ТИПИ МАЙНА
+    // ════════════════════════════════════════════════════════════════════════
     private void ToggleTypeManager() => showTypeManager = !showTypeManager;
 
     private async Task AddType()
@@ -706,9 +1421,7 @@ else
         typeMessage = "";
         if (string.IsNullOrWhiteSpace(newTypeName))
         {
-            typeMessage = "Введіть назву типу";
-            typeSuccess = false;
-            return;
+            typeMessage = "Введіть назву типу."; typeSuccess = false; return;
         }
         var maxOrder = propertyTypes.Any() ? propertyTypes.Max(t => t.SortOrder) : 0;
         Db.PropertyTypes.Add(new PropertyType
@@ -717,78 +1430,38 @@ else
             SortOrder = maxOrder + 1
         });
         await Db.SaveChangesAsync();
-        newTypeName = "";
-        typeMessage = "Тип додано";
-        typeSuccess = true;
+        newTypeName = ""; typeMessage = "Тип додано."; typeSuccess = true;
         await LoadTypes();
     }
 
     private void StartEditType(int id, string name)
     {
-        editingTypeId = id;
-        editTypeName = name;
-        typeMessage = "";
+        editingTypeId = id; editTypeName = name; typeMessage = "";
     }
 
-    private void CancelEditType()
-    {
-        editingTypeId = 0;
-        editTypeName = "";
-    }
+    private void CancelEditType() { editingTypeId = 0; editTypeName = ""; }
 
     private async Task SaveType()
     {
         if (string.IsNullOrWhiteSpace(editTypeName)) return;
         var pt = await Db.PropertyTypes.FindAsync(editingTypeId);
-        if (pt != null)
-        {
-            pt.Name = editTypeName.Trim();
-            await Db.SaveChangesAsync();
-            await LoadTypes();
-            await LoadData(); // оновити типи в списку
-        }
-        editingTypeId = 0;
-        editTypeName = "";
+        if (pt != null) { pt.Name = editTypeName.Trim(); await Db.SaveChangesAsync(); }
+        editingTypeId = 0; editTypeName = "";
+        await LoadTypes();
+        await LoadCompanyData();
     }
 
     private async Task DeleteType(int id)
     {
-        var inUse = await Db.PropertyItems.AnyAsync(i => i.PropertyTypeId == id);
+        var inUse = await Db.PropertyItems.AnyAsync(i => i.PropertyTypeId == id)
+                 || await Db.CompanyPropertyItems.AnyAsync(i => i.PropertyTypeId == id);
         if (inUse)
         {
-            typeMessage = "Неможливо видалити: тип використовується";
-            typeSuccess = false;
-            return;
+            typeMessage = "Неможливо видалити: тип використовується.";
+            typeSuccess = false; return;
         }
         var pt = await Db.PropertyTypes.FindAsync(id);
-        if (pt != null)
-        {
-            Db.PropertyTypes.Remove(pt);
-            await Db.SaveChangesAsync();
-            await LoadTypes();
-        }
+        if (pt != null) { Db.PropertyTypes.Remove(pt); await Db.SaveChangesAsync(); }
+        await LoadTypes();
     }
-
-    // ===== ЖУРНАЛ =====
-    private void ToggleLog() => showLog = !showLog;
-
-    private string GetActionBadge(string action) => action switch
-    {
-        "Додано" => "bg-success",
-        "Змінено" => "bg-warning text-dark",
-        "Видалено" => "bg-danger",
-        _ => "bg-secondary"
-    };
-
-    // ===== ПАГІНАЦІЯ =====
-    private void GoToPage(int page)
-    {
-        if (page >= 1 && page <= totalPages)
-        {
-            currentPage = page;
-            UpdatePagedItems();
-        }
-    }
-    private void PrevPage() => GoToPage(currentPage - 1);
-    private void NextPage() => GoToPage(currentPage + 1);
 }
