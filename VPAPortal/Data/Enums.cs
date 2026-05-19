@@ -1,6 +1,10 @@
 ﻿namespace VPAPortal.Data
 {
-    public enum CrewType { FPV = 0, Бомбер = 1 }
+    public enum CrewType { 
+        FPV = 0, 
+        Бомбер = 1, 
+        Крило = 2 
+    }
 
     public enum FlightResult
     {

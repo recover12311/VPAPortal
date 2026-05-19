@@ -1,20 +1,14 @@
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
 }
 
 a, .btn-link {
-    color: #006bb7;
+    color: #4a9fd4;
 }
 
-.btn-primary {
-    color: #fff;
-    background-color: #1b6ec2;
-    border-color: #1861ac;
-}
-
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
-}
+    .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+        box-shadow: 0 0 0 0.1rem rgba(255,255,255,0.1), 0 0 0 0.25rem rgba(100,180,255,0.35);
+    }
 
 .content {
     padding-top: 1.1rem;
@@ -25,414 +19,726 @@ h1:focus {
 }
 
 .valid.modified:not([type=checkbox]) {
-    outline: 1px solid #26b050;
+    outline: 1px solid #4caf50;
 }
 
 .invalid {
-    outline: 1px solid #e50000;
+    outline: 1px solid #e53935;
 }
 
 .validation-message {
-    color: #e50000;
+    color: #ef5350;
 }
 
 .blazor-error-boundary {
-    background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNDkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIG92ZXJmbG93PSJoaWRkZW4iPjxkZWZzPjxjbGlwUGF0aCBpZD0iY2xpcDAiPjxyZWN0IHg9IjIzNSIgeT0iNTEiIHdpZHRoPSI1NiIgaGVpZ2h0PSI0OSIvPjwvY2xpcFBhdGg+PC9kZWZzPjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMCkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yMzUgLTUxKSI+PHBhdGggZD0iTTI2My41MDYgNTFDMjY0LjcxNyA1MSAyNjUuODEzIDUxLjQ4MzcgMjY2LjYwNiA1Mi4yNjU4TDI2Ny4wNTIgNTIuNzk4NyAyNjcuNTM5IDUzLjYyODMgMjkwLjE4NSA5Mi4xODMxIDI5MC41NDUgOTIuNzk1IDI5MC42NTYgOTIuOTk2QzI5MC44NzcgOTMuNTEzIDI5MSA5NC4wODE1IDI5MSA5NC42NzgyIDI5MSA5Ny4wNjUxIDI4OS4wMzggOTkgMjg2LjYxNyA5OUwyNDAuMzgzIDk5QzIzNy45NjMgOTkgMjM2IDk3LjA2NTEgMjM2IDk0LjY3ODIgMjM2IDk0LjM3OTkgMjM2LjAzMSA5NC4wODg2IDIzNi4wODkgOTMuODA3MkwyMzYuMzM4IDkzLjAxNjIgMjM2Ljg1OCA5Mi4xMzE0IDI1OS40NzMgNTMuNjI5NCAyNTkuOTYxIDUyLjc5ODUgMjYwLjQwNyA1Mi4yNjU4QzI2MS4yIDUxLjQ4MzcgMjYyLjI5NiA1MSAyNjMuNTA2IDUxWk0yNjMuNTg2IDY2LjAxODNDMjYwLjczNyA2Ni4wMTgzIDI1OS4zMTMgNjcuMTI0NSAyNTkuMzEzIDY5LjMzNyAyNTkuMzEzIDY5LjYxMDIgMjU5LjMzMiA2OS44NjA4IDI1OS4zNzEgNzAuMDg4N0wyNjEuNzk1IDg0LjAxNjEgMjY1LjM4IDg0LjAxNjEgMjY3LjgyMSA2OS43NDc1QzI2Ny44NiA2OS43MzA5IDI2Ny44NzkgNjkuNTg3NyAyNjcuODc5IDY5LjMxNzkgMjY3Ljg3OSA2Ny4xMTgyIDI2Ni40NDggNjYuMDE4MyAyNjMuNTg2IDY2LjAxODNaTTI2My41NzYgODYuMDU0N0MyNjEuMDQ5IDg2LjA1NDcgMjU5Ljc4NiA4Ny4zMDA1IDI1OS43ODYgODkuNzkyMSAyNTkuNzg2IDkyLjI4MzcgMjYxLjA0OSA5My41Mjk1IDI2My41NzYgOTMuNTI5NSAyNjYuMTE2IDkzLjUyOTUgMjY3LjM4NyA5Mi4yODM3IDI2Ny4zODcgODkuNzkyMSAyNjcuMzg3IDg3LjMwMDUgMjY2LjExNiA4Ni4wNTQ3IDI2My41NzYgODYuMDU0N1oiIGZpbGw9IiNGRkU1MDAiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjwvZz48L3N2Zz4=) no-repeat 1rem/1.8rem, #b32121;
+    background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNDkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIG92ZXJmbG93PSJoaWRkZW4iPjxkZWZzPjxjbGlwUGF0aCBpZD0iY2xpcDAiPjxyZWN0IHg9IjIzNSIgeT0iNTEiIHdpZHRoPSI1NiIgaGVpZ2h0PSI0OSIvPjwvY2xpcFBhdGg+PC9kZWZzPjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMCkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yMzUgLTUxKSI+PHBhdGggZD0iTTI2My41MDYgNTFDMjY0LjcxNyA1MSAyNjUuODEzIDUxLjQ4MzcgMjY2LjYwNiA1Mi4yNjU4TDI2Ny4wNTIgNTIuNzk4NyAyNjcuNTM5IDUzLjYyODMgMjkwLjE4NSA5Mi4xODMxIDI5MC41NDUgOTIuNzk1IDI5MC42NTYgOTIuOTk2QzI5MC44NzcgOTMuNTEzIDI5MSA5NC4wODE1IDI5MSA5NC42NzgyIDI5MSA5Ny4wNjUxIDI4OS4wMzggOTkgMjg2LjYxNyA5OUwyNDAuMzgzIDk5QzIzNy45NjMgOTkgMjM2IDk3LjA2NTEgMjM2IDk0LjY3ODIgMjM2IDk0LjM3OTkgMjM2LjAzMSA5NC4wODg2IDIzNi4wODkgOTMuODA3MkwyMzYuMzM4IDkzLjAxNjIgMjM2Ljg1OCA5Mi4xMzE0IDI1OS40NzMgNTMuNjI5NCAyNTkuOTYxIDUyLjc5ODUgMjYwLjQwNyA1Mi4yNjU4QzI2MS4yIDUxLjQ4MzcgMjYyLjI5NiA1MSAyNjMuNTA2IDUxWk0yNjMuNTg2IDY2LjAxODNDMjYwLjczNyA2Ni4wMTgzIDI1OS4zMTMgNjcuMTI0NSAyNTkuMzEzIDY5LjMzNyAyNTkuMzEzIDY5LjYxMDIgMjU5LjMzMiA2OS44NjA4IDI1OS4zNzEgNzAuMDg4N0wyNjEuNzk1IDg0LjAxNjEgMjY1LjM4IDg0LjAxNjEgMjY3LjgyMSA2OS43NDc1QzI2Ny44NiA2OS43MzA5IDI2Ny44NzkgNjkuNTg3NyAyNjcuODc5IDY5LjMxNzkgMjY3Ljg3OSA2Ny4xMTgyIDI2Ni40NDggNjYuMDE4MyAyNjMuNTg2IDY2LjAxODNaTTI2My41NzYgODYuMDU0N0MyNjEuMDQ5IDg2LjA1NDcgMjU5Ljc4NiA4Ny4zMDA1IDI1OS43ODYgODkuNzkyMSAyNTkuNzg2IDkyLjI4MzcgMjYxLjA0OSA5My41Mjk1IDI2My41NzYgOTMuNTI5NSAyNjYuMTE2IDkzLjUyOTUgMjY3LjM4NyA5Mi4yODM3IDI2Ny4zODcgODkuNzkyMSAyNjcuMzg3IDg3LjMwMDUgMjY2LjExNiA4Ni4wNTQ3IDI2My41NzYgODYuMDU0N1oiIGZpbGw9IiNGRkU1MDAiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjwvZz48L3N2Zz4=) no-repeat 1rem/1.8rem, #6b1a1a;
     padding: 1rem 1rem 1rem 3.7rem;
-    color: white;
+    color: #fff;
 }
 
     .blazor-error-boundary::after {
-        content: "An error has occurred."
+        content: "Виникла помилка."
     }
 
 .darker-border-checkbox.form-check-input {
-    border-color: #929292;
+    border-color: #6b7280;
 }
 
 /* ========================================
-   VPAPORTAL — GLOBAL DESIGN SYSTEM
+   VPAPORTAL — DESIGN SYSTEM v2
+   Тема: Тактичний мінімалізм
    ======================================== */
 
-/* --- Базові змінні --- */
 :root {
-    --vpa-radius: 10px;
-    --vpa-shadow: 0 2px 12px rgba(0,0,0,0.08);
-    --vpa-shadow-hover: 0 4px 20px rgba(0,0,0,0.13);
-    --vpa-transition: all 0.18s ease;
+    --vpa-radius: 8px;
+    --vpa-radius-lg: 12px;
+    --vpa-shadow-sm: 0 1px 4px rgba(0,0,0,0.18);
+    --vpa-shadow: 0 2px 10px rgba(0,0,0,0.22);
+    --vpa-shadow-lg: 0 6px 28px rgba(0,0,0,0.30);
+    --vpa-transition: all 0.15s ease;
+    /* Акцентні кольори сторінок */
+    --c-flights: #3b82f6; /* синій — небо, польоти */
+    --c-warehouse: #10b981; /* смарагдовий — запаси */
+    --c-crews: #f59e0b; /* бурштиновий — екіпажі */
+    --c-property: #06b6d4; /* блакитний — майно */
+    --c-admin: #8b5cf6; /* фіолетовий — адмін */
+
+    --c-flights-dark: #1d4ed8;
+    --c-warehouse-dark: #059669;
+    --c-crews-dark: #d97706;
+    --c-property-dark: #0891b2;
+    --c-admin-dark: #7c3aed;
+    /* Нейтральні поверхні */
+    --bg-base: #f4f5f7;
+    --bg-card: #ffffff;
+    --bg-card-2: #f9fafb;
+    --border: #e5e7eb;
+    --border-2: #d1d5db;
+    --text-main: #111827;
+    --text-muted: #6b7280;
+    --text-hint: #9ca3af;
 }
 
 /* --- Загальний фон --- */
 body {
-    background: #f0f2f5;
+    background: var(--bg-base);
+    color: var(--text-main);
 }
 
-/* --- Сторінковий заголовок --- */
+/* ======================================
+   PAGE TITLE BAR
+====================================== */
 .page-title-bar {
-    padding: 1.1rem 1.4rem 1rem;
-    border-radius: var(--vpa-radius);
-    margin-bottom: 1.5rem;
-    color: #fff;
     display: flex;
     align-items: center;
-    gap: 0.7rem;
-    box-shadow: var(--vpa-shadow);
+    gap: 0.75rem;
+    padding: 0.85rem 1.25rem;
+    border-radius: var(--vpa-radius-lg);
+    margin-bottom: 1.5rem;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
 }
+
+    .page-title-bar::after {
+        content: '';
+        position: absolute;
+        right: -20px;
+        top: -30px;
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.06);
+        pointer-events: none;
+    }
 
     .page-title-bar h3 {
         margin: 0;
-        font-size: 1.35rem;
+        font-size: 1.2rem;
         font-weight: 700;
-        letter-spacing: 0.01em;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
     }
 
     .page-title-bar .page-icon {
-        font-size: 1.6rem;
+        font-size: 1.5rem;
         line-height: 1;
+        filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25));
     }
 
-    /* Вильоти — синій */
+    /* Вильоти — синій, геометричний */
     .page-title-bar.flights {
-        background: linear-gradient(135deg, #1a6fc4 0%, #2196f3 100%);
+        background: #1e3a5f;
+        border-left: 4px solid var(--c-flights);
+        box-shadow: var(--vpa-shadow);
     }
-    /* Склад — зелений */
+
+    /* Склад — темно-зелений, стриманий */
     .page-title-bar.warehouse {
-        background: linear-gradient(135deg, #1a8a4a 0%, #2ecc71 100%);
+        background: #14362a;
+        border-left: 4px solid var(--c-warehouse);
+        box-shadow: var(--vpa-shadow);
     }
-    /* Екіпажі — помаранчевий */
+
+    /* Екіпажі — темно-бурштиновий */
     .page-title-bar.crews {
-        background: linear-gradient(135deg, #c0560a 0%, #f57c00 100%);
+        background: #3d2a08;
+        border-left: 4px solid var(--c-crews);
+        box-shadow: var(--vpa-shadow);
     }
-    /* Майно — бірюзовий */
+
+    /* Майно — темно-блакитний */
     .page-title-bar.property {
-        background: linear-gradient(135deg, #0a7a82 0%, #00bcd4 100%);
+        background: #0c2d38;
+        border-left: 4px solid var(--c-property);
+        box-shadow: var(--vpa-shadow);
     }
-    /* Адмін — фіолетовий */
+
+    /* Адмін — темно-фіолетовий */
     .page-title-bar.admin {
-        background: linear-gradient(135deg, #5a1fa1 0%, #9c27b0 100%);
+        background: #2d1a4f;
+        border-left: 4px solid var(--c-admin);
+        box-shadow: var(--vpa-shadow);
     }
 
-/* --- Вкладки (nav-tabs) --- */
-.nav-tabs .nav-link {
-    border-radius: 8px 8px 0 0 !important;
-    font-weight: 500;
-    color: #555;
-    border: 1px solid transparent;
-    padding: 0.45rem 1rem;
-    transition: var(--vpa-transition);
+/* ======================================
+   NAVIGATION TABS — з акцентом сторінки
+====================================== */
+.nav-tabs {
+    border-bottom: 1px solid var(--border) !important;
+    gap: 2px;
 }
 
-    .nav-tabs .nav-link:hover {
-        background: #e8edf5;
-        color: #222;
+    .nav-tabs .nav-link {
+        border: 1px solid transparent !important;
+        border-radius: var(--vpa-radius) var(--vpa-radius) 0 0 !important;
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--text-muted) !important;
+        padding: 0.4rem 0.9rem;
+        transition: var(--vpa-transition);
+        letter-spacing: 0.01em;
+        background: transparent !important;
     }
 
-    .nav-tabs .nav-link.active {
-        font-weight: 700;
-        border-color: #dee2e6 #dee2e6 #fff;
+        .nav-tabs .nav-link:hover {
+            background: rgba(0,0,0,0.04) !important;
+            color: var(--text-main) !important;
+            border-color: transparent !important;
+        }
+
+        .nav-tabs .nav-link.active {
+            background: var(--bg-card) !important;
+            color: var(--text-main) !important;
+            border-color: var(--border) var(--border) var(--bg-card) !important;
+            font-weight: 600;
+        }
+
+    /* Акцент активної вкладки — тонка смужка зверху */
+    .tab-accent-flights .nav-tabs .nav-link.active,
+    .nav-tabs.flights-tabs .nav-link.active {
+        border-top: 2px solid var(--c-flights) !important;
+        color: var(--c-flights-dark);
     }
 
-/* Акцент активної вкладки по сторінці */
-.tab-accent-flights .nav-tabs .nav-link.active {
-    color: #1a6fc4;
-    border-top: 3px solid #1a6fc4;
-}
+    .tab-accent-warehouse .nav-tabs .nav-link.active,
+    .nav-tabs.warehouse-tabs .nav-link.active {
+        border-top: 2px solid var(--c-warehouse) !important;
+        color: var(--c-warehouse-dark);
+    }
 
-.tab-accent-warehouse .nav-tabs .nav-link.active {
-    color: #1a8a4a;
-    border-top: 3px solid #1a8a4a;
-}
+    .tab-accent-crews .nav-tabs .nav-link.active,
+    .nav-tabs.crews-tabs .nav-link.active {
+        border-top: 2px solid var(--c-crews) !important;
+        color: var(--c-crews-dark);
+    }
 
-.tab-accent-crews .nav-tabs .nav-link.active {
-    color: #c0560a;
-    border-top: 3px solid #f57c00;
-}
+    .tab-accent-property .nav-tabs .nav-link.active,
+    .nav-tabs.property-tabs .nav-link.active {
+        border-top: 2px solid var(--c-property) !important;
+        color: var(--c-property-dark);
+    }
 
-.tab-accent-property .nav-tabs .nav-link.active {
-    color: #0a7a82;
-    border-top: 3px solid #00bcd4;
-}
+    .tab-accent-admin .nav-tabs .nav-link.active,
+    .nav-tabs.admin-tabs .nav-link.active {
+        border-top: 2px solid var(--c-admin) !important;
+        color: var(--c-admin-dark);
+    }
 
-.tab-accent-admin .nav-tabs .nav-link.active {
-    color: #5a1fa1;
-    border-top: 3px solid #9c27b0;
-}
-
-/* --- Картки --- */
+/* ======================================
+   CARDS
+====================================== */
 .card {
-    border: none !important;
-    border-radius: var(--vpa-radius) !important;
-    box-shadow: var(--vpa-shadow) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--vpa-radius-lg) !important;
+    box-shadow: var(--vpa-shadow-sm) !important;
+    background: var(--bg-card) !important;
     transition: var(--vpa-transition);
 }
 
     .card:hover {
-        box-shadow: var(--vpa-shadow-hover) !important;
+        box-shadow: var(--vpa-shadow) !important;
     }
 
 .card-header {
-    border-radius: var(--vpa-radius) var(--vpa-radius) 0 0 !important;
-    border-bottom: 1px solid rgba(0,0,0,0.07) !important;
-    background: #fff !important;
-    padding: 0.8rem 1.1rem !important;
+    background: var(--bg-card-2) !important;
+    border-bottom: 1px solid var(--border) !important;
+    border-radius: var(--vpa-radius-lg) var(--vpa-radius-lg) 0 0 !important;
+    padding: 0.7rem 1.1rem !important;
+    font-size: 0.88rem;
+    color: var(--text-main);
 }
 
 .card-footer {
-    background: #f8f9fa !important;
-    border-top: 1px solid rgba(0,0,0,0.06) !important;
-    border-radius: 0 0 var(--vpa-radius) var(--vpa-radius) !important;
+    background: var(--bg-card-2) !important;
+    border-top: 1px solid var(--border) !important;
+    border-radius: 0 0 var(--vpa-radius-lg) var(--vpa-radius-lg) !important;
+    padding: 0.65rem 1rem !important;
 }
 
-/* Кольорова смужка зліва у картках по сторінці */
+/* Лівий акцент — унікальний колір на кожній сторінці */
 .card-accent-flights {
-    border-left: 4px solid #2196f3 !important;
+    border-left: 3px solid var(--c-flights) !important;
 }
 
 .card-accent-warehouse {
-    border-left: 4px solid #2ecc71 !important;
+    border-left: 3px solid var(--c-warehouse) !important;
 }
 
 .card-accent-crews {
-    border-left: 4px solid #f57c00 !important;
+    border-left: 3px solid var(--c-crews) !important;
 }
 
 .card-accent-property {
-    border-left: 4px solid #00bcd4 !important;
+    border-left: 3px solid var(--c-property) !important;
 }
 
 .card-accent-admin {
-    border-left: 4px solid #9c27b0 !important;
+    border-left: 3px solid var(--c-admin) !important;
 }
 
-/* --- Таблиці --- */
+/* ======================================
+   TABLES
+====================================== */
 .table {
+    font-size: 0.875rem;
     border-radius: var(--vpa-radius);
     overflow: hidden;
-    font-size: 0.9rem;
+    border-color: var(--border);
 }
 
-    .table thead.table-dark th {
-        font-weight: 600;
-        letter-spacing: 0.02em;
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        padding: 0.65rem 0.85rem;
+    .table thead.table-dark {
+        background: #1f2937 !important;
     }
+
+        .table thead.table-dark th {
+            background: #1f2937 !important;
+            color: #e5e7eb !important;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-color: #374151 !important;
+            padding: 0.6rem 0.85rem;
+        }
 
     .table tbody tr {
-        transition: background 0.12s;
+        transition: background 0.1s;
+        border-color: var(--border);
     }
 
+    .table td, .table th {
+        border-color: var(--border) !important;
+    }
+
+/* Hover рядків — кожна сторінка свій відтінок */
 .table-hover tbody tr:hover {
-    background: #f0f4ff !important;
+    background: #f3f4f6 !important;
 }
-/* Акцент рядку hover по сторінці */
+
 .table-hover-flights tbody tr:hover {
-    background: #e8f2ff !important;
+    background: #eff6ff !important;
 }
 
 .table-hover-warehouse tbody tr:hover {
-    background: #e8f9ef !important;
+    background: #ecfdf5 !important;
 }
 
 .table-hover-crews tbody tr:hover {
-    background: #fff3e8 !important;
+    background: #fffbeb !important;
 }
 
 .table-hover-property tbody tr:hover {
-    background: #e8f9fc !important;
+    background: #ecfeff !important;
 }
 
-/* --- Кнопки --- */
+/* ======================================
+   BUTTONS
+====================================== */
 .btn {
-    border-radius: 7px !important;
+    border-radius: var(--vpa-radius) !important;
     font-weight: 500;
+    font-size: 0.875rem;
     transition: var(--vpa-transition);
+    letter-spacing: 0.01em;
 }
 
 .btn-xs {
-    padding: 0.15rem 0.5rem !important;
-    font-size: 0.75rem !important;
+    padding: 0.15rem 0.45rem !important;
+    font-size: 0.72rem !important;
     border-radius: 5px !important;
+    line-height: 1.4;
 }
 
+/* Переосмислення стандартних Bootstrap кнопок */
 .btn-primary {
-    background: #2196f3 !important;
-    border-color: #1a6fc4 !important;
+    background: #2563eb !important;
+    border-color: #1d4ed8 !important;
+    color: #fff !important;
 }
 
     .btn-primary:hover {
-        background: #1a6fc4 !important;
+        background: #1d4ed8 !important;
     }
 
 .btn-success {
-    background: #2ecc71 !important;
-    border-color: #1a8a4a !important;
+    background: #059669 !important;
+    border-color: #047857 !important;
+    color: #fff !important;
 }
 
     .btn-success:hover {
-        background: #1a8a4a !important;
+        background: #047857 !important;
     }
 
 .btn-warning {
-    background: #ffa726 !important;
-    border-color: #e65100 !important;
+    background: #d97706 !important;
+    border-color: #b45309 !important;
     color: #fff !important;
 }
 
     .btn-warning:hover {
-        background: #e65100 !important;
+        background: #b45309 !important;
     }
 
 .btn-danger {
-    background: #ef5350 !important;
-    border-color: #c62828 !important;
+    background: #dc2626 !important;
+    border-color: #b91c1c !important;
+    color: #fff !important;
 }
 
     .btn-danger:hover {
-        background: #c62828 !important;
+        background: #b91c1c !important;
     }
 
-/* Акцентна кнопка для кожної сторінки */
-.btn-page-flights {
-    background: linear-gradient(135deg,#1a6fc4,#2196f3) !important;
+.btn-secondary {
+    background: #4b5563 !important;
+    border-color: #374151 !important;
     color: #fff !important;
-    border: none !important;
 }
+
+    .btn-secondary:hover {
+        background: #374151 !important;
+    }
+
+/* Акцентні кнопки сторінок */
+.btn-page-flights {
+    background: #1e3a5f !important;
+    color: #93c5fd !important;
+    border: 1px solid #3b82f6 !important;
+}
+
+    .btn-page-flights:hover {
+        background: #1e40af !important;
+        color: #fff !important;
+    }
 
 .btn-page-warehouse {
-    background: linear-gradient(135deg,#1a8a4a,#2ecc71) !important;
-    color: #fff !important;
-    border: none !important;
+    background: #14362a !important;
+    color: #6ee7b7 !important;
+    border: 1px solid #10b981 !important;
 }
+
+    .btn-page-warehouse:hover {
+        background: #065f46 !important;
+        color: #fff !important;
+    }
 
 .btn-page-crews {
-    background: linear-gradient(135deg,#c0560a,#f57c00) !important;
-    color: #fff !important;
-    border: none !important;
+    background: #3d2a08 !important;
+    color: #fde68a !important;
+    border: 1px solid #f59e0b !important;
 }
+
+    .btn-page-crews:hover {
+        background: #78350f !important;
+        color: #fff !important;
+    }
 
 .btn-page-property {
-    background: linear-gradient(135deg,#0a7a82,#00bcd4) !important;
-    color: #fff !important;
-    border: none !important;
+    background: #0c2d38 !important;
+    color: #67e8f9 !important;
+    border: 1px solid #06b6d4 !important;
 }
 
-/* --- Форми --- */
+    .btn-page-property:hover {
+        background: #164e63 !important;
+        color: #fff !important;
+    }
+
+/* ======================================
+   FORMS
+====================================== */
 .form-control, .form-select {
-    border-radius: 7px !important;
-    border: 1px solid #d0d7e3 !important;
-    font-size: 0.9rem;
+    border-radius: var(--vpa-radius) !important;
+    border: 1px solid var(--border-2) !important;
+    font-size: 0.875rem;
+    color: var(--text-main);
+    background: #fff;
     transition: var(--vpa-transition);
 }
 
     .form-control:focus, .form-select:focus {
-        box-shadow: 0 0 0 3px rgba(33,150,243,0.15) !important;
-        border-color: #2196f3 !important;
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.15) !important;
+        outline: none;
     }
 
-/* --- Бейджі --- */
+    .form-control::placeholder {
+        color: var(--text-hint);
+    }
+
+.form-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.3rem;
+}
+
+/* ======================================
+   BADGES
+====================================== */
 .badge {
     border-radius: 5px !important;
     font-weight: 600;
-    letter-spacing: 0.02em;
-    font-size: 0.72rem;
-    padding: 0.28em 0.55em !important;
+    letter-spacing: 0.03em;
+    font-size: 0.7rem;
+    padding: 0.25em 0.55em !important;
 }
 
-/* --- Пагінація --- */
+/* Перевизначаємо Bootstrap badge-кольори — темніші, читабельніші */
+.bg-primary {
+    background: #2563eb !important;
+}
+
+.bg-success {
+    background: #059669 !important;
+}
+
+.bg-danger {
+    background: #dc2626 !important;
+}
+
+.bg-warning {
+    background: #d97706 !important;
+    color: #fff !important;
+}
+
+.bg-info {
+    background: #0891b2 !important;
+}
+
+.bg-secondary {
+    background: #4b5563 !important;
+}
+
+.bg-dark {
+    background: #1f2937 !important;
+}
+
+/* ======================================
+   PAGINATION
+====================================== */
 .pagination .page-link {
     border-radius: 6px !important;
     margin: 0 2px;
-    border: 1px solid #dee2e6;
-    color: #555;
-    font-size: 0.85rem;
+    border: 1px solid var(--border-2);
+    color: var(--text-muted);
+    font-size: 0.82rem;
     transition: var(--vpa-transition);
+    background: var(--bg-card);
 }
+
+    .pagination .page-link:hover {
+        background: #f3f4f6;
+        color: var(--text-main);
+        border-color: var(--border-2);
+    }
 
 .pagination .page-item.active .page-link {
-    background: #2196f3;
-    border-color: #1a6fc4;
+    background: #1f2937;
+    border-color: #1f2937;
+    color: #fff;
+    font-weight: 600;
 }
 
-.pagination .page-link:hover {
-    background: #e8f2ff;
-    color: #1a6fc4;
+.pagination .page-item.disabled .page-link {
+    opacity: 0.4;
 }
 
-/* --- Модальні вікна --- */
+/* ======================================
+   MODALS
+====================================== */
 .modal-content {
-    border: none !important;
-    border-radius: var(--vpa-radius) !important;
-    box-shadow: 0 8px 40px rgba(0,0,0,0.18) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--vpa-radius-lg) !important;
+    box-shadow: var(--vpa-shadow-lg) !important;
+    background: var(--bg-card) !important;
 }
 
 .modal-header {
-    border-radius: var(--vpa-radius) var(--vpa-radius) 0 0 !important;
-    border-bottom: 1px solid #eee !important;
-    padding: 1rem 1.3rem !important;
+    border-bottom: 1px solid var(--border) !important;
+    border-radius: var(--vpa-radius-lg) var(--vpa-radius-lg) 0 0 !important;
+    padding: 1rem 1.25rem !important;
+    background: var(--bg-card-2) !important;
 }
+
+    .modal-header .modal-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-main);
+    }
 
 .modal-footer {
-    border-top: 1px solid #eee !important;
-    border-radius: 0 0 var(--vpa-radius) var(--vpa-radius) !important;
+    border-top: 1px solid var(--border) !important;
+    border-radius: 0 0 var(--vpa-radius-lg) var(--vpa-radius-lg) !important;
+    background: var(--bg-card-2) !important;
+    padding: 0.75rem 1.25rem !important;
 }
 
-/* --- Алерти --- */
+/* ======================================
+   ALERTS
+====================================== */
 .alert {
     border-radius: var(--vpa-radius) !important;
     border: none !important;
-    font-size: 0.9rem;
+    font-size: 0.875rem;
 }
 
-/* --- Навігація (бокове меню) --- */
+.alert-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.alert-danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.alert-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.alert-info {
+    background: #cffafe;
+    color: #164e63;
+}
+
+/* ======================================
+   NAVIGATION (side menu)
+====================================== */
 .navbar-dark {
-    background: linear-gradient(180deg, #1a1f36 0%, #2d3561 100%) !important;
-    box-shadow: 2px 0 12px rgba(0,0,0,0.15);
+    background: #111827 !important;
+    border-right: 1px solid #1f2937;
+    box-shadow: 2px 0 16px rgba(0,0,0,0.35);
 }
 
 .nav-scrollable {
-    background: linear-gradient(180deg, #1e2440 0%, #252d5a 100%);
+    background: #111827;
 }
 
 .nav-link {
-    border-radius: 8px !important;
-    margin: 2px 0;
+    border-radius: 7px !important;
+    margin: 1px 4px;
+    font-size: 0.875rem;
     transition: var(--vpa-transition);
 }
 
-    .nav-link:hover, .nav-link.active {
-        background: rgba(255,255,255,0.12) !important;
+    .nav-link:hover {
+        background: rgba(255,255,255,0.08) !important;
         color: #fff !important;
     }
 
     .nav-link.active {
-        background: rgba(255,255,255,0.18) !important;
+        background: rgba(255,255,255,0.13) !important;
+        color: #fff !important;
         font-weight: 600;
+        border-left: 2px solid #60a5fa;
     }
 
-/* --- Фільтр-панель --- */
+/* ======================================
+   FILTER BAR
+====================================== */
 .filter-bar {
-    background: #fff;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
     border-radius: var(--vpa-radius);
-    padding: 0.85rem 1.1rem;
+    padding: 0.75rem 1rem;
     margin-bottom: 1rem;
-    box-shadow: var(--vpa-shadow);
+    box-shadow: var(--vpa-shadow-sm);
     display: flex;
     flex-wrap: wrap;
-    gap: 0.75rem;
+    gap: 0.65rem;
     align-items: flex-end;
 }
 
-/* --- Дата-бар (вильоти) --- */
+/* ======================================
+   DATE BAR
+====================================== */
 .date-bar {
-    background: #fff;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
     border-radius: var(--vpa-radius);
-    padding: 0.8rem 1.2rem;
-    margin-bottom: 1.2rem;
-    box-shadow: var(--vpa-shadow);
+    padding: 0.7rem 1.1rem;
+    margin-bottom: 1.1rem;
+    box-shadow: var(--vpa-shadow-sm);
     display: flex;
     align-items: center;
     gap: 1rem;
     flex-wrap: wrap;
+}
+
+/* ======================================
+   MISC UTILITIES
+====================================== */
+
+/* Тонка розділова лінія між рядками */
+.table-ruled tbody tr {
+    border-bottom: 1px solid var(--border);
+}
+
+/* Статус-смужка зверху картки (альтернатива border-left) */
+.card-top-flights {
+    border-top: 3px solid var(--c-flights) !important;
+}
+
+.card-top-warehouse {
+    border-top: 3px solid var(--c-warehouse) !important;
+}
+
+.card-top-crews {
+    border-top: 3px solid var(--c-crews) !important;
+}
+
+.card-top-property {
+    border-top: 3px solid var(--c-property) !important;
+}
+
+.card-top-admin {
+    border-top: 3px solid var(--c-admin) !important;
+}
+
+/* Текстові акценти */
+.text-flights {
+    color: var(--c-flights) !important;
+}
+
+.text-warehouse {
+    color: var(--c-warehouse) !important;
+}
+
+.text-crews {
+    color: var(--c-crews) !important;
+}
+
+.text-property {
+    color: var(--c-property) !important;
+}
+
+.text-admin {
+    color: var(--c-admin) !important;
+}
+
+/* Допоміжний клас для дрібних підписів */
+.label-sm {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-hint);
+}
+
+/* Внутрішній секційний заголовок */
+.section-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 0.6rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
 }
