@@ -1,4 +1,6 @@
-﻿namespace VPAPortal.Data.Models
+﻿using VPAPortal.Common;
+
+namespace VPAPortal.Data.Models
 {
     public class FlightDrop
     {

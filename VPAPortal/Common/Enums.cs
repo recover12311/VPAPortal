@@ -1,4 +1,4 @@
-﻿namespace VPAPortal.Data
+﻿namespace VPAPortal.Common
 {
     public enum CrewType { 
         FPV = 0, 
