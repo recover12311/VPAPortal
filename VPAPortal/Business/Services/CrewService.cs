@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using VPAPortal.Business.Services.Interfaces;
 using VPAPortal.Common;
 using VPAPortal.Data.Models;
-using VPAPortal.Data.Services.Interfaces;
 
 namespace VPAPortal.Data.Services
 {
