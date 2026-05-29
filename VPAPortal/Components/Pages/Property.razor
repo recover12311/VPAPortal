@@ -2,13 +2,15 @@
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
+@using VPAPortal.Business.Services.Interfaces
 @using VPAPortal.Common
 @using VPAPortal.Data
 @using VPAPortal.Data.Models
 @attribute [Authorize]
-@inject ApplicationDbContext Db
+@inject IPropertyService PropertyService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IWebHostEnvironment Env
+@inject ApplicationDbContext Db
 
 <PageTitle>Майно</PageTitle>
 
@@ -219,7 +221,6 @@ else
                                         }
                                         else
                                         {
-
                                             @item.Item.Name
                                         }
                                     </td>
@@ -933,7 +934,7 @@ else
         currentUser = auth.User.Identity?.Name ?? "";
 
         companies = await Db.Companies.OrderBy(c => c.SortOrder).ToListAsync();
-        await LoadTypes();
+        propertyTypes = await PropertyService.GetPropertyTypesAsync();
 
         if (companies.Any())
         {
@@ -941,12 +942,6 @@ else
             selectedCompany = companies.First();
             await LoadCompanyData();
         }
-    }
-
-    private async Task LoadTypes()
-    {
-        propertyTypes = await Db.PropertyTypes
-            .OrderBy(t => t.SortOrder).ThenBy(t => t.Name).ToListAsync();
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -966,15 +961,9 @@ else
 
     private async Task LoadCompanyData()
     {
-        // Майно роти
-        companyItems = await Db.CompanyPropertyItems
-            .Where(i => i.CompanyId == selectedCompanyId)
-            .Include(i => i.PropertyType)
-            .OrderBy(i => i.PropertyType.Name).ThenBy(i => i.Name)
-            .ToListAsync();
+        companyItems = await PropertyService.GetCompanyItemsAsync(selectedCompanyId);
         ApplyCompanyFilter();
 
-        // Екіпажі
         crews = await Db.Crews
             .Where(c => c.CompanyId == selectedCompanyId)
             .OrderBy(c => c.SortOrder).ToListAsync();
@@ -992,17 +981,10 @@ else
         if (selectedCrew != null)
             await LoadCrewItems();
 
-        // Накладні
-        allInvoices = await Db.PropertyInvoices
-            .Where(i => i.CompanyId == selectedCompanyId)
-            .OrderByDescending(i => i.Date).ToListAsync();
+        allInvoices = await PropertyService.GetInvoicesAsync(selectedCompanyId);
         ApplyInvoiceFilter();
 
-        // Журнал
-        logs = await Db.PropertyLogs
-            .Where(l => l.CompanyId == selectedCompanyId)
-            .OrderByDescending(l => l.CreatedAt)
-            .ToListAsync();
+        logs = await PropertyService.GetLogsAsync(selectedCompanyId);
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -1022,20 +1004,9 @@ else
             addCompanyItemSuccess = false; return;
         }
 
-        var typeName = propertyTypes.FirstOrDefault(t => t.Id == newCompanyItemTypeId)?.Name ?? "";
-        var item = new CompanyPropertyItem
-        {
-            CompanyId = selectedCompanyId,
-            Name = newCompanyItemName.Trim(),
-            Quantity = newCompanyItemQty,
-            PropertyTypeId = newCompanyItemTypeId,
-            CreatedBy = currentUser,
-            CreatedAt = DateTime.Now
-        };
-        Db.CompanyPropertyItems.Add(item);
-        await AddLog("Рота", "Додано", newCompanyItemName.Trim(),
-            $"К-сть: {newCompanyItemQty}, Тип: {typeName}");
-        await Db.SaveChangesAsync();
+        await PropertyService.AddCompanyItemAsync(
+            selectedCompanyId, newCompanyItemName.Trim(),
+            newCompanyItemQty, newCompanyItemTypeId, currentUser);
 
         addCompanyItemMessage = "Майно додано.";
         addCompanyItemSuccess = true;
@@ -1053,30 +1024,17 @@ else
 
     private async Task SaveCompanyItem(int id)
     {
-        var item = await Db.CompanyPropertyItems.FindAsync(id);
-        if (item != null)
-        {
-            var typeName = propertyTypes.FirstOrDefault(t => t.Id == editingCompanyItemTypeId)?.Name ?? "";
-            await AddLog("Рота", "Змінено", item.Name,
-                $"К-сть: {item.Quantity}→{editingCompanyItemQty}, Тип: {typeName}");
-            item.Name = editingCompanyItemName.Trim();
-            item.Quantity = editingCompanyItemQty;
-            item.PropertyTypeId = editingCompanyItemTypeId;
-            await Db.SaveChangesAsync();
-        }
+        await PropertyService.SaveCompanyItemAsync(
+            id, editingCompanyItemName.Trim(),
+            editingCompanyItemQty, editingCompanyItemTypeId, currentUser);
+
         editingCompanyItemId = 0;
         await LoadCompanyData();
     }
 
     private async Task DeleteCompanyItem(int id)
     {
-        var item = await Db.CompanyPropertyItems.FindAsync(id);
-        if (item != null)
-        {
-            await AddLog("Рота", "Видалено", item.Name, $"К-сть: {item.Quantity}");
-            Db.CompanyPropertyItems.Remove(item);
-            await Db.SaveChangesAsync();
-        }
+        await PropertyService.DeleteCompanyItemAsync(id, currentUser);
         await LoadCompanyData();
     }
 
@@ -1107,48 +1065,17 @@ else
         if (transferCrewId == 0) { transferMessage = "Оберіть екіпаж."; transferSuccess = false; return; }
         if (transferQty <= 0) { transferMessage = "Кількість має бути > 0."; transferSuccess = false; return; }
 
-        var src = await Db.CompanyPropertyItems
-            .Include(i => i.PropertyType).FirstOrDefaultAsync(i => i.Id == transferItemId);
-        if (src == null || src.Quantity < transferQty)
+        var result = await PropertyService.TransferToCrewAsync(
+            selectedCompanyId, transferCrewId, transferItemId, transferQty, currentUser);
+
+        transferSuccess = !result.StartsWith("Недостатня");
+        transferMessage = result;
+
+        if (transferSuccess)
         {
-            transferMessage = "Недостатня кількість у роти."; transferSuccess = false; return;
+            transferItemId = 0; transferQty = 1;
+            await LoadCompanyData();
         }
-
-        // Зменшуємо у роти
-        src.Quantity -= transferQty;
-
-        // Шукаємо чи є вже таке майно в екіпажі
-        var dest = await Db.PropertyItems
-            .FirstOrDefaultAsync(i => i.CrewId == transferCrewId
-                && i.Name == src.Name
-                && i.PropertyTypeId == src.PropertyTypeId);
-
-        if (dest != null)
-        {
-            dest.Quantity += transferQty;
-        }
-        else
-        {
-            Db.PropertyItems.Add(new PropertyItem
-            {
-                CrewId = transferCrewId,
-                Name = src.Name,
-                Quantity = transferQty,
-                PropertyTypeId = src.PropertyTypeId,
-                CreatedBy = currentUser,
-                CreatedAt = DateTime.Now
-            });
-        }
-
-        var crewName = crews?.FirstOrDefault(c => c.Id == transferCrewId)?.Name ?? "";
-        await AddLog("Рота", "Передано", src.Name,
-            $"Передано {transferQty} шт. екіпажу «{crewName}»");
-        await Db.SaveChangesAsync();
-
-        transferMessage = $"Передано {transferQty} шт. «{src.Name}» екіпажу «{crewName}».";
-        transferSuccess = true;
-        transferItemId = 0; transferQty = 1;
-        await LoadCompanyData();
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -1165,11 +1092,7 @@ else
 
     private async Task LoadCrewItems()
     {
-        allCrewItems = await Db.PropertyItems
-            .Where(i => i.CrewId == selectedCrewId)
-            .Include(i => i.PropertyType)
-            .OrderBy(i => i.PropertyType.Name).ThenBy(i => i.Name)
-            .ToListAsync();
+        allCrewItems = await PropertyService.GetCrewItemsAsync(selectedCrewId);
         ApplyCrewFilter();
     }
 
@@ -1209,19 +1132,10 @@ else
             addCrewItemMessage = "Оберіть тип."; addCrewItemSuccess = false; return;
         }
 
-        var typeName = propertyTypes.FirstOrDefault(t => t.Id == newCrewItemTypeId)?.Name ?? "";
-        Db.PropertyItems.Add(new PropertyItem
-        {
-            CrewId = selectedCrewId,
-            Name = newCrewItemName.Trim(),
-            Quantity = newCrewItemQty,
-            PropertyTypeId = newCrewItemTypeId,
-            CreatedBy = currentUser,
-            CreatedAt = DateTime.Now
-        });
-        await AddLog("Екіпаж", "Додано", newCrewItemName.Trim(),
-            $"К-сть: {newCrewItemQty}, Тип: {typeName}, Екіпаж: {selectedCrew?.Name}");
-        await Db.SaveChangesAsync();
+        await PropertyService.AddCrewItemAsync(
+            selectedCrewId, selectedCompanyId,
+            newCrewItemName.Trim(), newCrewItemQty,
+            newCrewItemTypeId, selectedCrew?.Name ?? "", currentUser);
 
         addCrewItemMessage = "Майно додано."; addCrewItemSuccess = true;
         newCrewItemName = ""; newCrewItemQty = 1; newCrewItemTypeId = 0;
@@ -1246,17 +1160,10 @@ else
     private async Task SaveCrewEditItem()
     {
         editCrewItemMessage = "";
-        var item = await Db.PropertyItems.Include(i => i.PropertyType)
-            .FirstOrDefaultAsync(i => i.Id == editingCrewItemId);
-        if (item == null) { editCrewItemMessage = "Не знайдено."; return; }
 
-        var typeName = propertyTypes.FirstOrDefault(t => t.Id == editCrewItemTypeId)?.Name ?? "";
-        await AddLog("Екіпаж", "Змінено", item.Name,
-            $"К-сть: {item.Quantity}→{editCrewItemQty}");
-        item.Name = editCrewItemName.Trim();
-        item.Quantity = editCrewItemQty;
-        item.PropertyTypeId = editCrewItemTypeId;
-        await Db.SaveChangesAsync();
+        await PropertyService.SaveCrewItemAsync(
+            editingCrewItemId, editCrewItemName.Trim(),
+            editCrewItemQty, editCrewItemTypeId, currentUser);
 
         editCrewItemMessage = "Збережено."; editCrewItemSuccess = true;
         await LoadCrewItems();
@@ -1264,14 +1171,7 @@ else
 
     private async Task DeleteCrewItem(int id)
     {
-        var item = await Db.PropertyItems.FindAsync(id);
-        if (item != null)
-        {
-            await AddLog("Екіпаж", "Видалено", item.Name,
-                $"К-сть: {item.Quantity}, Екіпаж: {selectedCrew?.Name}");
-            Db.PropertyItems.Remove(item);
-            await Db.SaveChangesAsync();
-        }
+        await PropertyService.DeleteCrewItemAsync(id, selectedCrew?.Name ?? "", currentUser);
         await LoadCrewItems();
     }
 
@@ -1300,16 +1200,9 @@ else
             photoPath = $"/uploads/property-invoices/{fileName}";
         }
 
-        Db.PropertyInvoices.Add(new PropertyInvoice
-        {
-            CompanyId = selectedCompanyId,
-            InvoiceNumber = newInvoiceNumber.Trim(),
-            Date = newInvoiceDate,
-            PhotoPath = photoPath,
-            CreatedBy = currentUser,
-            CreatedAt = DateTime.Now
-        });
-        await Db.SaveChangesAsync();
+        await PropertyService.AddInvoiceAsync(
+            selectedCompanyId, newInvoiceNumber.Trim(),
+            newInvoiceDate, photoPath, currentUser);
 
         invoiceMessage = "Накладну додано."; invoiceSuccess = true;
         newInvoiceNumber = "";
@@ -1320,18 +1213,7 @@ else
 
     private async Task DeleteInvoice(int id)
     {
-        var inv = await Db.PropertyInvoices.FindAsync(id);
-        if (inv != null)
-        {
-            if (!string.IsNullOrEmpty(inv.PhotoPath))
-            {
-                var path = Path.Combine(Env.WebRootPath,
-                    inv.PhotoPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
-                if (File.Exists(path)) File.Delete(path);
-            }
-            Db.PropertyInvoices.Remove(inv);
-            await Db.SaveChangesAsync();
-        }
+        await PropertyService.DeleteInvoiceAsync(id, Env.WebRootPath);
         await LoadCompanyData();
     }
 
@@ -1385,22 +1267,6 @@ else
     // ════════════════════════════════════════════════════════════════════════
     // ЖУРНАЛ
     // ════════════════════════════════════════════════════════════════════════
-    private async Task AddLog(string level, string action, string itemName, string details)
-    {
-        Db.PropertyLogs.Add(new PropertyLog
-        {
-            CompanyId = selectedCompanyId,
-            CrewId = level == "Екіпаж" ? selectedCrewId : null,
-            Level = level,
-            Action = action,
-            ItemName = itemName,
-            Details = details,
-            CreatedBy = currentUser,
-            CreatedAt = DateTime.Now
-        });
-        await Db.SaveChangesAsync();
-    }
-
     private void ToggleLog() => showLog = !showLog;
 
     private string GetActionBadge(string action) => action switch
@@ -1425,14 +1291,9 @@ else
             typeMessage = "Введіть назву типу."; typeSuccess = false; return;
         }
         var maxOrder = propertyTypes.Any() ? propertyTypes.Max(t => t.SortOrder) : 0;
-        Db.PropertyTypes.Add(new PropertyType
-        {
-            Name = newTypeName.Trim(),
-            SortOrder = maxOrder + 1
-        });
-        await Db.SaveChangesAsync();
+        await PropertyService.AddPropertyTypeAsync(newTypeName.Trim(), maxOrder);
         newTypeName = ""; typeMessage = "Тип додано."; typeSuccess = true;
-        await LoadTypes();
+        propertyTypes = await PropertyService.GetPropertyTypesAsync();
     }
 
     private void StartEditType(int id, string name)
@@ -1445,24 +1306,20 @@ else
     private async Task SaveType()
     {
         if (string.IsNullOrWhiteSpace(editTypeName)) return;
-        var pt = await Db.PropertyTypes.FindAsync(editingTypeId);
-        if (pt != null) { pt.Name = editTypeName.Trim(); await Db.SaveChangesAsync(); }
+        await PropertyService.SavePropertyTypeAsync(editingTypeId, editTypeName.Trim());
         editingTypeId = 0; editTypeName = "";
-        await LoadTypes();
+        propertyTypes = await PropertyService.GetPropertyTypesAsync();
         await LoadCompanyData();
     }
 
     private async Task DeleteType(int id)
     {
-        var inUse = await Db.PropertyItems.AnyAsync(i => i.PropertyTypeId == id)
-                 || await Db.CompanyPropertyItems.AnyAsync(i => i.PropertyTypeId == id);
-        if (inUse)
+        var deleted = await PropertyService.DeletePropertyTypeAsync(id);
+        if (!deleted)
         {
             typeMessage = "Неможливо видалити: тип використовується.";
             typeSuccess = false; return;
         }
-        var pt = await Db.PropertyTypes.FindAsync(id);
-        if (pt != null) { Db.PropertyTypes.Remove(pt); await Db.SaveChangesAsync(); }
-        await LoadTypes();
+        propertyTypes = await PropertyService.GetPropertyTypesAsync();
     }
 }
