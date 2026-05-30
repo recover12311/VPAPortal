@@ -121,7 +121,7 @@ else
 
                             <div class="border rounded p-3 mb-3 bg-light">
                                 <div class="fw-bold mb-2 text-danger">🎯 Ціль та боєкомплект</div>
-                                <div class="row g-3">
+                                <div class="row g-3 align-items-end">
                                     <div class="col-md-3">
                                         <label class="form-label">Ціль</label>
                                         <select class="form-select" @bind="newTarget">
@@ -162,17 +162,24 @@ else
                             </div>
                         }
 
-                        @* ── БОМБЕР ── *@
-                        @if (selectedCrew.Type == CrewType.Бомбер)
+                        @* ── БОМБЕР або КРИЛО УДАРНЕ ── *@
+                        @if (selectedCrew.Type == CrewType.Бомбер || selectedCrew.Type == CrewType.КрилоУдарне)
                         {
-                            <div class="row g-3 mb-3">
+                            var bomberList = selectedCrew.Type == CrewType.Бомбер
+                                ? availableBombers
+                                : availableWingsAttack;
+                            var noDronesLabel = selectedCrew.Type == CrewType.Бомбер
+                                ? "Немає бомберів"
+                                : "Немає ударних крил";
+
+                            <div class="row g-3 mb-3 align-items-end">
                                 <div class="col-md-3">
                                     <label class="form-label">Безпілотник</label>
-                                    @if (availableBombers.Any())
+                                    @if (bomberList.Any())
                                     {
                                         <select class="form-select" @bind="newDroneItemId">
                                             <option value="0">— оберіть —</option>
-                                            @foreach (var d in availableBombers)
+                                            @foreach (var d in bomberList)
                                             {
                                                 <option value="@d.Id">
                                                     @d.Name (к-сть: @d.Quantity)
@@ -182,9 +189,7 @@ else
                                     }
                                     else
                                     {
-                                        <div class="form-control bg-light text-danger">
-                                            Немає бомберів
-                                        </div>
+                                        <div class="form-control bg-light text-danger">@noDronesLabel</div>
                                     }
                                 </div>
                                 <div class="col-md-2">
@@ -198,11 +203,38 @@ else
                                     <label class="form-label">Повернувся?</label>
                                     <select class="form-select"
                                             value="@(newDroneReturned ? "true" : "false")"
-                                            @onchange='e => newDroneReturned = e.Value?.ToString() == "true"'>
+                                            @onchange='e => OnDroneReturnedChanged(e.Value?.ToString() == "true")'>
                                         <option value="true">Так</option>
                                         <option value="false">Ні (збитий)</option>
                                     </select>
                                 </div>
+
+                                @* Причина незворотності *@
+                                @if (!newDroneReturned)
+                                {
+                                    <div class="col-md-3">
+                                        <label class="form-label">Причина збиття</label>
+                                        <select class="form-select"
+                                                value="@newDroneNotReturnedReason"
+                                                @onchange='e => OnNotReturnedReasonChanged(e.Value?.ToString() ?? "")'>
+                                            <option value="">— оберіть —</option>
+                                            @foreach (var r in DroneNotReturnedReasons)
+                                            {
+                                                <option value="@r">@r</option>
+                                            }
+                                        </select>
+                                    </div>
+
+                                    @if (newDroneNotReturnedReason == "Інше")
+                                    {
+                                        <div class="col-md-4">
+                                            <label class="form-label">Вкажіть причину</label>
+                                            <input class="form-control"
+                                                   @bind="newDroneNotReturnedCustom"
+                                                   placeholder="Опишіть причину..." />
+                                        </div>
+                                    }
+                                }
                             </div>
 
                             @* Ударна місія — список скидів *@
@@ -233,7 +265,7 @@ else
                                                     </button>
                                                 }
                                             </div>
-                                            <div class="row g-3">
+                                            <div class="row g-2 align-items-end">
                                                 <div class="col-md-2">
                                                     <label class="form-label small">Час</label>
                                                     <input type="time"
@@ -246,8 +278,8 @@ else
                                                            @bind="newDrops[idx].Coordinates"
                                                            placeholder="36UXB 11111 11111" />
                                                 </div>
-                                                <div class="col-md-3">
-                                                    <label class="form-label small">Населений пункт</label>
+                                                <div class="col-md-2">
+                                                    <label class="form-label small">Н.П.</label>
                                                     <input class="form-control form-control-sm"
                                                            @bind="newDrops[idx].Settlement"
                                                            placeholder="Н.П." />
@@ -270,9 +302,7 @@ else
                                                         <option value="0">— оберіть —</option>
                                                         @foreach (var a in availableAmmos)
                                                         {
-                                                            <option value="@a.Id">
-                                                                @a.Name (@a.Quantity)
-                                                            </option>
+                                                            <option value="@a.Id">@a.Name (@a.Quantity)</option>
                                                         }
                                                     </select>
                                                 </div>
@@ -329,7 +359,7 @@ else
                                                     </button>
                                                 }
                                             </div>
-                                            <div class="row g-3">
+                                            <div class="row g-2 align-items-end">
                                                 <div class="col-md-2">
                                                     <label class="form-label small">Час доставки</label>
                                                     <input type="time"
@@ -363,10 +393,10 @@ else
                             }
                         }
 
-                        @* ── КРИЛО ── *@
+                        @* ── КРИЛО (розвідка) ── *@
                         @if (selectedCrew.Type == CrewType.Крило)
                         {
-                            <div class="row g-3 mb-3">
+                            <div class="row g-3 mb-3 align-items-end">
                                 <div class="col-md-3">
                                     <label class="form-label">Безпілотник</label>
                                     @if (availableWings.Any())
@@ -383,9 +413,7 @@ else
                                     }
                                     else
                                     {
-                                        <div class="form-control bg-light text-danger">
-                                            Немає крил
-                                        </div>
+                                        <div class="form-control bg-light text-danger">Немає крил</div>
                                     }
                                 </div>
                                 <div class="col-md-2">
@@ -398,7 +426,7 @@ else
                                            @bind="newCoordinates"
                                            placeholder="36UXB 11111 11111" />
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-2">
                                     <label class="form-label">Населений пункт</label>
                                     <input class="form-control"
                                            @bind="newSettlement"
@@ -408,11 +436,37 @@ else
                                     <label class="form-label">Повернувся?</label>
                                     <select class="form-select"
                                             value="@(newDroneReturned ? "true" : "false")"
-                                            @onchange='e => newDroneReturned = e.Value?.ToString() == "true"'>
+                                            @onchange='e => OnDroneReturnedChanged(e.Value?.ToString() == "true")'>
                                         <option value="true">Так</option>
                                         <option value="false">Ні (збитий)</option>
                                     </select>
                                 </div>
+
+                                @if (!newDroneReturned)
+                                {
+                                    <div class="col-md-3">
+                                        <label class="form-label">Причина збиття</label>
+                                        <select class="form-select"
+                                                value="@newDroneNotReturnedReason"
+                                                @onchange='e => OnNotReturnedReasonChanged(e.Value?.ToString() ?? "")'>
+                                            <option value="">— оберіть —</option>
+                                            @foreach (var r in DroneNotReturnedReasons)
+                                            {
+                                                <option value="@r">@r</option>
+                                            }
+                                        </select>
+                                    </div>
+
+                                    @if (newDroneNotReturnedReason == "Інше")
+                                    {
+                                        <div class="col-md-4">
+                                            <label class="form-label">Вкажіть причину</label>
+                                            <input class="form-control"
+                                                   @bind="newDroneNotReturnedCustom"
+                                                   placeholder="Опишіть причину..." />
+                                        </div>
+                                    }
+                                }
                             </div>
                         }
 
@@ -453,7 +507,6 @@ else
                                     <input class="form-control" @bind="editCoordinates" />
                                 </div>
 
-                                @* Ціль і результат — тільки для не-Крила *@
                                 @if (selectedCrew.Type != CrewType.Крило)
                                 {
                                     <div class="col-md-3">
@@ -495,12 +548,8 @@ else
                             }
                         </div>
                         <div class="modal-footer">
-                            <button class="btn btn-secondary" @onclick="CloseEditModal">
-                                Скасувати
-                            </button>
-                            <button class="btn btn-primary" @onclick="SaveEditFlight">
-                                Зберегти
-                            </button>
+                            <button class="btn btn-secondary" @onclick="CloseEditModal">Скасувати</button>
+                            <button class="btn btn-primary" @onclick="SaveEditFlight">Зберегти</button>
                         </div>
                     </div>
                 </div>
@@ -621,7 +670,7 @@ else
                                         }
                                     </small>
                                 }
-                                                                else
+                                else
                                 { @item.Flight.Coordinates }
                             </td>
 
@@ -688,7 +737,7 @@ else
                                 </td>
 
                                 <td>
-                                    @if (item.Flight.Drops.All(d => d.IsDelivery))
+                                    @if (item.Flight.Drops.All(d => d.IsDelivery) && item.Flight.Drops.Any())
                                     {
                                         @* результат вже відображено в деталях *@
                                     }
@@ -713,14 +762,30 @@ else
                                         </span>
                                     }
 
-                                    @* Бейдж повернення для Бомбера *@
-                                    @if (selectedCrew.Type == CrewType.Бомбер)
+                                    @* Бейдж повернення для Бомбера / КрилоУдарне *@
+                                    @if (selectedCrew.Type == CrewType.Бомбер || selectedCrew.Type == CrewType.КрилоУдарне)
                                     {
                                         <div class="mt-1">
-                                            <span class="badge @(item.Flight.DroneReturned ? "bg-success" : "bg-danger")"
-                                                  style="font-size:0.65rem;">
-                                                @(item.Flight.DroneReturned ? "↩ повернувся" : "✖ збитий")
-                                            </span>
+                                            @if (item.Flight.DroneReturned)
+                                            {
+                                                <span class="badge bg-success" style="font-size:0.65rem;">
+                                                    ↩ повернувся
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger" style="font-size:0.65rem;">
+                                                    ✖ збитий
+                                                </span>
+                                                @if (!string.IsNullOrEmpty(item.Flight.DroneNotReturnedReason))
+                                                {
+                                                    <div class="text-muted" style="font-size:0.7rem;">
+                                                        @(item.Flight.DroneNotReturnedReason == "Інше" && !string.IsNullOrEmpty(item.Flight.DroneNotReturnedCustom)
+                                                            ? item.Flight.DroneNotReturnedCustom
+                                                            : item.Flight.DroneNotReturnedReason)
+                                                    </div>
+                                                }
+                                            }
                                         </div>
                                     }
                                 </td>
@@ -773,9 +838,7 @@ else
                         {
                             var pn = p;
                             <li class="page-item @(currentPage == pn ? "active" : "")">
-                                <button class="page-link" @onclick="() => GoToPage(pn)">
-                                    @pn
-                                </button>
+                                <button class="page-link" @onclick="() => GoToPage(pn)">@pn</button>
                             </li>
                         }
                         <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
@@ -808,39 +871,58 @@ else
     private Crew?           selectedCrew;
 
     // ── Дата та доступні запаси ──────────────────────────────────────────────
-    private DateOnly        selectedDate     = DateOnly.FromDateTime(DateTime.Today);
-    private List<DroneItem> availableDrones  = new();
-    private List<DroneItem> availableBombers = new();
-    private List<DroneItem> availableWings   = new();
-    private List<AmmoItem>  availableAmmos   = new();
+    private DateOnly        selectedDate        = DateOnly.FromDateTime(DateTime.Today);
+    private List<DroneItem> availableDrones     = new();
+    private List<DroneItem> availableBombers    = new();
+    private List<DroneItem> availableWings      = new();
+    private List<DroneItem> availableWingsAttack = new();
+    private List<AmmoItem>  availableAmmos      = new();
+
+    // ── Причини незворотності ────────────────────────────────────────────────
+    private static readonly List<string> DroneNotReturnedReasons = new()
+    {
+        "Подавлення РЕБ",
+        "Збито стрілецькою зброєю",
+        "Збито FPV дроном",
+        "Збито з ПЗРК",
+        "Збито з ЗСУ",
+        "Відмова двигуна",
+        "Відмова системи управління",
+        "Помилка пілота",
+        "Збій навігації / GPS",
+        "Погодні умови",
+        "Інше"
+    };
 
     // ── Форма FPV ────────────────────────────────────────────────────────────
-    private TimeOnly    newTime        = TimeOnly.FromDateTime(DateTime.Now);
-    private string      newCoordinates = "";
-    private string      newTarget      = "";
-    private int         newDroneItemId = 0;
-    private int         newAmmoItemId  = 0;
-    private int         newTargetCount = 1;
-    private FlightResult newResult     = FlightResult.Уражено;
-    private string      newSettlement  = "";
-    private string      addFlightMessage = "";
-    private bool        addFlightSuccess  = false;
+    private TimeOnly     newTime        = TimeOnly.FromDateTime(DateTime.Now);
+    private string       newCoordinates = "";
+    private string       newTarget      = "";
+    private int          newDroneItemId = 0;
+    private int          newAmmoItemId  = 0;
+    private int          newTargetCount = 1;
+    private FlightResult newResult      = FlightResult.Уражено;
+    private string       newSettlement  = "";
+    private string       addFlightMessage = "";
+    private bool         addFlightSuccess = false;
 
-    // ── Форма Бомбер / Крило ─────────────────────────────────────────────────
-    private string           newMissionType  = "attack";
-    private bool             newDroneReturned = true;
-    private List<DropModel>  newDrops        = new() { new DropModel() };
+    // ── Форма Бомбер / Крило / КрилоУдарне ──────────────────────────────────
+    private string          newMissionType           = "attack";
+    private bool            newDroneReturned         = true;
+    private string          newDroneNotReturnedReason = "";
+    private string          newDroneNotReturnedCustom = "";
+    private List<DropModel> newDrops                 = new() { new DropModel() };
 
     // ── Редагування вильоту ──────────────────────────────────────────────────
-    private bool        showEditModal    = false;
-    private int         editingFlightId  = 0;
-    private TimeOnly    editTime;
-    private string      editCoordinates  = "";
-    private string      editTarget       = "";
+    private bool         showEditModal    = false;
+    private int          editingFlightId  = 0;
+    private TimeOnly     editTime;
+    private string       editCoordinates  = "";
+    private string       editTarget       = "";
     private FlightResult editResult;
-    private string      editSettlement   = "";
-    private string      editFlightMessage = "";
-    private bool        editFlightSuccess  = false;
+    private string       editSettlement   = "";
+    private string       editFlightMessage = "";
+    private bool         editFlightSuccess = false;
 
     // ── Список вильотів та фільтри ───────────────────────────────────────────
     private List<Flight>        allFlights      = new();
@@ -901,7 +983,6 @@ else
     {
         crews = await CrewService.GetCrewsAsync(selectedCompanyId);
 
-        // Використовуємо ICrewService через DI (inject нижче)
         if (crews.Any())
         {
             selectedCrewId = crews.First().Id;
@@ -910,9 +991,10 @@ else
         }
         else
         {
-            selectedCrew     = null;
-            availableBombers = new();
-            availableWings   = new();
+            selectedCrew        = null;
+            availableBombers    = new();
+            availableWings      = new();
+            availableWingsAttack = new();
         }
     }
 
@@ -930,19 +1012,20 @@ else
         ResetForm();
     }
 
-    /// <summary>Завантажує доступні запаси та вильоти для вибраного екіпажу.</summary>
     private async Task LoadCrewData()
     {
-        availableDrones  = await FlightService.GetAvailableDronesAsync(selectedCrewId);
-        availableBombers = await FlightService.GetAvailableBombersAsync(selectedCrewId);
-        availableWings   = await FlightService.GetAvailableWingsAsync(selectedCrewId);
-        availableAmmos   = await FlightService.GetAvailableAmmosAsync(selectedCrewId);
+        availableDrones      = await FlightService.GetAvailableDronesAsync(selectedCrewId);
+        availableBombers     = await FlightService.GetAvailableBombersAsync(selectedCrewId);
+        availableWings       = await FlightService.GetAvailableWingsAsync(selectedCrewId);
+        availableWingsAttack = await FlightService.GetAvailableWingsAttackAsync(selectedCrewId);
+        availableAmmos       = await FlightService.GetAvailableAmmosAsync(selectedCrewId);
 
-        // Автовибір першого апарату для Бомбера / Крила
         if (selectedCrew?.Type == CrewType.Бомбер && availableBombers.Any())
             newDroneItemId = availableBombers.First().Id;
         else if (selectedCrew?.Type == CrewType.Крило && availableWings.Any())
             newDroneItemId = availableWings.First().Id;
+        else if (selectedCrew?.Type == CrewType.КрилоУдарне && availableWingsAttack.Any())
+            newDroneItemId = availableWingsAttack.First().Id;
 
         await LoadFlights();
     }
@@ -987,9 +1070,7 @@ else
 
     private void ResetFilter()
     {
-        filterResult     = "";
-        filterSettlement = "";
-        filterTarget     = "";
+        filterResult = ""; filterSettlement = ""; filterTarget = "";
         ApplyFilter();
     }
 
@@ -1001,7 +1082,7 @@ else
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    // ФОРМА — УПРАВЛІННЯ СКИДАМИ
+    // ФОРМА — УПРАВЛІННЯ СКИДАМИ ТА ПРИЧИНОЮ ЗБИТТЯ
     // ════════════════════════════════════════════════════════════════════════
     private void AddDrop()
     {
@@ -1015,26 +1096,45 @@ else
             newDrops.RemoveAt(idx);
     }
 
-    /// <summary>Скидає форму до початкового стану.</summary>
+    private void OnDroneReturnedChanged(bool returned)
+    {
+        newDroneReturned = returned;
+        if (returned)
+        {
+            newDroneNotReturnedReason = "";
+            newDroneNotReturnedCustom = "";
+        }
+    }
+
+    private void OnNotReturnedReasonChanged(string reason)
+    {
+        newDroneNotReturnedReason = reason;
+        if (reason != "Інше")
+            newDroneNotReturnedCustom = "";
+    }
+
     private void ResetForm()
     {
-        newCoordinates   = "";
-        newTarget        = "";
-        newAmmoItemId    = 0;
-        newTargetCount   = 1;
-        newResult        = FlightResult.Уражено;
-        newSettlement    = "";
-        newMissionType   = "attack";
-        newDroneReturned = true;
-        newDrops         = new() { new DropModel() };
-        newTime          = TimeOnly.FromDateTime(DateTime.Now);
-        addFlightMessage = "";
+        newCoordinates           = "";
+        newTarget                = "";
+        newAmmoItemId            = 0;
+        newTargetCount           = 1;
+        newResult                = FlightResult.Уражено;
+        newSettlement            = "";
+        newMissionType           = "attack";
+        newDroneReturned         = true;
+        newDroneNotReturnedReason = "";
+        newDroneNotReturnedCustom = "";
+        newDrops                 = new() { new DropModel() };
+        newTime                  = TimeOnly.FromDateTime(DateTime.Now);
+        addFlightMessage         = "";
 
         newDroneItemId = selectedCrew?.Type switch
         {
-            CrewType.Бомбер => availableBombers.FirstOrDefault()?.Id ?? 0,
-            CrewType.Крило  => availableWings.FirstOrDefault()?.Id   ?? 0,
-            _               => 0
+            CrewType.Бомбер      => availableBombers.FirstOrDefault()?.Id    ?? 0,
+            CrewType.Крило       => availableWings.FirstOrDefault()?.Id       ?? 0,
+            CrewType.КрилоУдарне => availableWingsAttack.FirstOrDefault()?.Id ?? 0,
+            _                    => 0
         };
     }
 
@@ -1054,8 +1154,8 @@ else
 
             if (selectedCrew.Type == CrewType.FPV)
             {
-                if (newDroneItemId == 0)     throw new Exception("Оберіть безпілотник.");
-                if (newAmmoItemId == 0)      throw new Exception("Оберіть боєкомплект.");
+                if (newDroneItemId == 0) throw new Exception("Оберіть безпілотник.");
+                if (newAmmoItemId == 0)  throw new Exception("Оберіть боєкомплект.");
                 if (string.IsNullOrWhiteSpace(newSettlement))
                     throw new Exception("Введіть населений пункт.");
 
@@ -1076,19 +1176,49 @@ else
             }
             else if (selectedCrew.Type == CrewType.Бомбер)
             {
-                if (newDroneItemId == 0)
-                    throw new Exception("Оберіть безпілотник.");
+                if (newDroneItemId == 0) throw new Exception("Оберіть безпілотник.");
 
                 await FlightService.AddBomberFlightAsync(new BomberFlightRequest
                 {
-                    CrewId        = selectedCrewId,
-                    Date          = selectedDate,
-                    Time          = newTime,
-                    DroneItemId   = newDroneItemId,
-                    DroneReturned = newDroneReturned,
-                    MissionType   = newMissionType,
-                    CreatedBy     = currentUser,
-                    Drops         = newDrops.Select(d => new DropRequest
+                    CrewId                = selectedCrewId,
+                    Date                  = selectedDate,
+                    Time                  = newTime,
+                    DroneItemId           = newDroneItemId,
+                    DroneReturned         = newDroneReturned,
+                    DroneNotReturnedReason = newDroneReturned ? null : Clean(newDroneNotReturnedReason),
+                    DroneNotReturnedCustom = newDroneReturned ? null : Clean(newDroneNotReturnedCustom),
+                    MissionType           = newMissionType,
+                    CreatedBy             = currentUser,
+                    Drops                 = newDrops.Select(d => new DropRequest
+                    {
+                        Coordinates  = Clean(d.Coordinates),
+                        Target       = Clean(d.Target),
+                        Settlement   = Clean(d.Settlement),
+                        AmmoItemId   = d.AmmoItemId,
+                        Result       = d.Result,
+                        TargetCount  = d.TargetCount,
+                        DropTime     = d.DropTime,
+                        DeliveryTime = d.DeliveryTime,
+                        IsDelivery   = newMissionType == "delivery"
+                    }).ToList()
+                });
+            }
+            else if (selectedCrew.Type == CrewType.КрилоУдарне)
+            {
+                if (newDroneItemId == 0) throw new Exception("Оберіть безпілотник.");
+
+                await FlightService.AddWingAttackFlightAsync(new BomberFlightRequest
+                {
+                    CrewId                = selectedCrewId,
+                    Date                  = selectedDate,
+                    Time                  = newTime,
+                    DroneItemId           = newDroneItemId,
+                    DroneReturned         = newDroneReturned,
+                    DroneNotReturnedReason = newDroneReturned ? null : Clean(newDroneNotReturnedReason),
+                    DroneNotReturnedCustom = newDroneReturned ? null : Clean(newDroneNotReturnedCustom),
+                    MissionType           = newMissionType,
+                    CreatedBy             = currentUser,
+                    Drops                 = newDrops.Select(d => new DropRequest
                     {
                         Coordinates  = Clean(d.Coordinates),
                         Target       = Clean(d.Target),
@@ -1104,19 +1234,20 @@ else
             }
             else if (selectedCrew.Type == CrewType.Крило)
             {
-                if (newDroneItemId == 0)
-                    throw new Exception("Оберіть безпілотник.");
+                if (newDroneItemId == 0) throw new Exception("Оберіть безпілотник.");
 
                 await FlightService.AddWingFlightAsync(new WingFlightRequest
                 {
-                    CrewId        = selectedCrewId,
-                    Date          = selectedDate,
-                    Time          = newTime,
-                    Coordinates   = Clean(newCoordinates),
-                    Settlement    = Clean(newSettlement),
-                    DroneItemId   = newDroneItemId,
-                    DroneReturned = newDroneReturned,
-                    CreatedBy     = currentUser
+                    CrewId                = selectedCrewId,
+                    Date                  = selectedDate,
+                    Time                  = newTime,
+                    Coordinates           = Clean(newCoordinates),
+                    Settlement            = Clean(newSettlement),
+                    DroneItemId           = newDroneItemId,
+                    DroneReturned         = newDroneReturned,
+                    DroneNotReturnedReason = newDroneReturned ? null : Clean(newDroneNotReturnedReason),
+                    DroneNotReturnedCustom = newDroneReturned ? null : Clean(newDroneNotReturnedCustom),
+                    CreatedBy             = currentUser
                 });
             }
 
@@ -1145,7 +1276,7 @@ else
         editResult        = flight.Result;
         editSettlement    = flight.Settlement;
         editFlightMessage = "";
-        editFlightSuccess  = false;
+        editFlightSuccess = false;
         showEditModal     = true;
     }
 
@@ -1159,7 +1290,6 @@ else
     private async Task SaveEditFlight()
     {
         editFlightMessage = "";
-
         try
         {
             await FlightService.UpdateFlightAsync(
@@ -1168,14 +1298,13 @@ else
                 editResult, editSettlement);
 
             editFlightMessage = "Збережено.";
-            editFlightSuccess  = true;
-
+            editFlightSuccess = true;
             await LoadFlights();
         }
         catch (Exception ex)
         {
             editFlightMessage = ex.Message;
-            editFlightSuccess  = false;
+            editFlightSuccess = false;
         }
     }
 
@@ -1185,7 +1314,6 @@ else
     private async Task DeleteFlight(int flightId)
     {
         if (selectedCrew == null) return;
-
         await FlightService.DeleteFlightAsync(flightId, selectedCrew.Type);
         await LoadCrewData();
         ResetForm();
@@ -1196,11 +1324,7 @@ else
     // ════════════════════════════════════════════════════════════════════════
     private void GoToPage(int page)
     {
-        if (page >= 1 && page <= totalPages)
-        {
-            currentPage = page;
-            UpdatePagedFlights();
-        }
+        if (page >= 1 && page <= totalPages) { currentPage = page; UpdatePagedFlights(); }
     }
 
     private void PrevPage() => GoToPage(currentPage - 1);
@@ -1233,9 +1357,10 @@ else
 
     private string GetCrewTypeBadge(CrewType type) => type switch
     {
-        CrewType.FPV    => "bg-danger",
-        CrewType.Бомбер => "bg-primary",
-        CrewType.Крило  => "bg-success",
-        _               => "bg-secondary"
+        CrewType.FPV         => "bg-danger",
+        CrewType.Бомбер      => "bg-primary",
+        CrewType.Крило       => "bg-success",
+        CrewType.КрилоУдарне => "bg-warning text-dark",
+        _                    => "bg-secondary"
     };
 }

@@ -8,6 +8,7 @@
         public string Name { get; set; } = "";
         public int Quantity { get; set; }
         public bool IsBomber { get; set; } = false;
+        public bool IsWingAttack { get; set; } = false;
         public bool IsWing { get; set; } = false;
     }
 }

@@ -19,6 +19,9 @@ namespace VPAPortal.Business.Services.Interfaces
         /// <summary>Повертає крила екіпажу (незалежно від кількості).</summary>
         Task<List<DroneItem>> GetAvailableWingsAsync(int crewId);
 
+        /// <summary>Повертає ударні крила екіпажу (незалежно від кількості).</summary>
+        Task<List<DroneItem>> GetAvailableWingsAttackAsync(int crewId);
+
         /// <summary>Повертає боєкомплект екіпажу з кількістю > 0.</summary>
         Task<List<AmmoItem>> GetAvailableAmmosAsync(int crewId);
 
@@ -36,8 +39,11 @@ namespace VPAPortal.Business.Services.Interfaces
         /// <summary>Додає виліт Бомбера: списує боєкомплект скидів.</summary>
         Task AddBomberFlightAsync(BomberFlightRequest request);
 
-        /// <summary>Додає виліт Крила: нічого не списує.</summary>
+        /// <summary>Додає виліт Крила (розвідка): нічого не списує.</summary>
         Task AddWingFlightAsync(WingFlightRequest request);
+
+        /// <summary>Додає виліт Ударного крила: списує боєкомплект скидів.</summary>
+        Task AddWingAttackFlightAsync(BomberFlightRequest request);
 
         /// <summary>Редагує базові поля вильоту (час, координати, ціль, результат, н.п.).</summary>
         Task UpdateFlightAsync(int flightId, TimeOnly time, string coordinates,
@@ -46,7 +52,7 @@ namespace VPAPortal.Business.Services.Interfaces
         /// <summary>
         /// Видаляє виліт та повертає списані запаси назад.
         /// FPV: повертає дрон + боєкомплект.
-        /// Бомбер: повертає тільки боєкомплект скидів.
+        /// Бомбер / КрилоУдарне: повертає тільки боєкомплект скидів.
         /// Крило: нічого не повертає.
         /// </summary>
         Task DeleteFlightAsync(int flightId, CrewType crewType);
@@ -70,7 +76,7 @@ namespace VPAPortal.Business.Services.Interfaces
         public string CreatedBy { get; set; } = "";
     }
 
-    /// <summary>Дані для створення вильоту Бомбера.</summary>
+    /// <summary>Дані для створення вильоту Бомбера або Ударного крила.</summary>
     public class BomberFlightRequest
     {
         public int CrewId { get; set; }
@@ -78,6 +84,13 @@ namespace VPAPortal.Business.Services.Interfaces
         public TimeOnly Time { get; set; }
         public int DroneItemId { get; set; }
         public bool DroneReturned { get; set; }
+
+        /// <summary>Причина незворотності з фіксованого списку. Null якщо повернувся.</summary>
+        public string? DroneNotReturnedReason { get; set; }
+
+        /// <summary>Довільна причина, якщо обрано "Інше".</summary>
+        public string? DroneNotReturnedCustom { get; set; }
+
         public string MissionType { get; set; } = "attack"; // "attack" | "delivery"
         public List<DropRequest> Drops { get; set; } = new();
         public string CreatedBy { get; set; } = "";
@@ -97,7 +110,7 @@ namespace VPAPortal.Business.Services.Interfaces
         public bool IsDelivery { get; set; }
     }
 
-    /// <summary>Дані для створення вильоту Крила.</summary>
+    /// <summary>Дані для створення вильоту Крила (розвідка).</summary>
     public class WingFlightRequest
     {
         public int CrewId { get; set; }
@@ -107,6 +120,13 @@ namespace VPAPortal.Business.Services.Interfaces
         public string Settlement { get; set; } = "";
         public int DroneItemId { get; set; }
         public bool DroneReturned { get; set; }
+
+        /// <summary>Причина незворотності з фіксованого списку. Null якщо повернувся.</summary>
+        public string? DroneNotReturnedReason { get; set; }
+
+        /// <summary>Довільна причина, якщо обрано "Інше".</summary>
+        public string? DroneNotReturnedCustom { get; set; }
+
         public string CreatedBy { get; set; } = "";
     }
 }

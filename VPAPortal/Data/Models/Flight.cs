@@ -19,6 +19,8 @@ namespace VPAPortal.Data.Models
         public bool DroneReturned { get; set; }
         public string CreatedBy { get; set; } = "";
         public DateTime CreatedAt { get; set; }
+        public string? DroneNotReturnedReason { get; set; }  // причина зі списку
+        public string? DroneNotReturnedCustom { get; set; }  // якщо "Інше"
 
         public ICollection<FlightDrop> Drops { get; set; } = new List<FlightDrop>();
     }

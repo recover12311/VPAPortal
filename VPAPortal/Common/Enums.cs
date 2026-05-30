@@ -3,7 +3,8 @@
     public enum CrewType { 
         FPV = 0, 
         Бомбер = 1, 
-        Крило = 2 
+        Крило = 2,
+        КрилоУдарне = 3
     }
 
     public enum FlightResult
