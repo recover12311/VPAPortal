@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using VPAPortal.Business.DTO;
 using VPAPortal.Business.Services.Interfaces;
 using VPAPortal.Common;
 using VPAPortal.Data;

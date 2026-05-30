@@ -1,4 +1,5 @@
-﻿using VPAPortal.Common;
+﻿using VPAPortal.Business.DTO;
+using VPAPortal.Common;
 using VPAPortal.Data.Models;
 
 namespace VPAPortal.Business.Services.Interfaces
@@ -56,77 +57,5 @@ namespace VPAPortal.Business.Services.Interfaces
         /// Крило: нічого не повертає.
         /// </summary>
         Task DeleteFlightAsync(int flightId, CrewType crewType);
-    }
-
-    // ── Request-об'єкти ─────────────────────────────────────────────────────
-
-    /// <summary>Дані для створення вильоту FPV.</summary>
-    public class FpvFlightRequest
-    {
-        public int CrewId { get; set; }
-        public DateOnly Date { get; set; }
-        public TimeOnly Time { get; set; }
-        public string Coordinates { get; set; } = "";
-        public string Target { get; set; } = "";
-        public string Settlement { get; set; } = "";
-        public int DroneItemId { get; set; }
-        public int AmmoItemId { get; set; }
-        public FlightResult Result { get; set; }
-        public int TargetCount { get; set; }
-        public string CreatedBy { get; set; } = "";
-    }
-
-    /// <summary>Дані для створення вильоту Бомбера або Ударного крила.</summary>
-    public class BomberFlightRequest
-    {
-        public int CrewId { get; set; }
-        public DateOnly Date { get; set; }
-        public TimeOnly Time { get; set; }
-        public int DroneItemId { get; set; }
-        public bool DroneReturned { get; set; }
-
-        /// <summary>Причина незворотності з фіксованого списку. Null якщо повернувся.</summary>
-        public string? DroneNotReturnedReason { get; set; }
-
-        /// <summary>Довільна причина, якщо обрано "Інше".</summary>
-        public string? DroneNotReturnedCustom { get; set; }
-
-        public string MissionType { get; set; } = "attack"; // "attack" | "delivery"
-        public List<DropRequest> Drops { get; set; } = new();
-        public string CreatedBy { get; set; } = "";
-    }
-
-    /// <summary>Дані одного скиду / доставки.</summary>
-    public class DropRequest
-    {
-        public string Coordinates { get; set; } = "";
-        public string Target { get; set; } = "";
-        public string Settlement { get; set; } = "";
-        public int AmmoItemId { get; set; }
-        public FlightResult Result { get; set; }
-        public int TargetCount { get; set; }
-        public TimeOnly DropTime { get; set; }
-        public TimeOnly DeliveryTime { get; set; }
-        public bool IsDelivery { get; set; }
-    }
-
-    /// <summary>Дані для створення вильоту Крила (розвідка).</summary>
-    public class WingFlightRequest
-    {
-        public int CrewId { get; set; }
-        public DateOnly Date { get; set; }
-        public TimeOnly Time { get; set; }
-        public string Coordinates { get; set; } = "";
-        public string Settlement { get; set; } = "";
-        public int DroneItemId { get; set; }
-        public bool DroneReturned { get; set; }
-
-        /// <summary>Причина незворотності з фіксованого списку. Null якщо повернувся.</summary>
-        public string? DroneNotReturnedReason { get; set; }
-
-        /// <summary>Довільна причина, якщо обрано "Інше".</summary>
-        public string? DroneNotReturnedCustom { get; set; }
-
-        public string CreatedBy { get; set; } = "";
     }
 }
