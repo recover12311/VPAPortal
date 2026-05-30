@@ -646,12 +646,12 @@ else
                                     <small>
                                         @foreach (var drop in item.Flight.Drops)
                                         {
-                                            <div>
+                                            <span class="d-block">
                                                 @if (drop.DeliveryTime.HasValue)
                                                 { @drop.DeliveryTime.Value.ToString("HH:mm") }
                                                 else
                                                 { @item.Flight.Time.ToString("HH:mm") }
-                                            </div>
+                                            </span>
                                         }
                                     </small>
                                 }
@@ -666,7 +666,7 @@ else
                                     <small>
                                         @foreach (var drop in item.Flight.Drops)
                                         {
-                                            <div>@drop.Coordinates</div>
+                                            <span class="d-block">@drop.Coordinates</span>
                                         }
                                     </small>
                                 }
@@ -688,14 +688,14 @@ else
                                 <td>
                                     @if (!item.Flight.Drops.Any())
                                     {
-                                        <small><div>@item.Flight.Target</div></small>
+                                        <small><span class="d-block">@item.Flight.Target</span></small>
                                     }
                                     else if (item.Flight.Drops.All(d => d.IsDelivery))
                                     {
                                         <small>
                                             @foreach (var drop in item.Flight.Drops)
                                             {
-                                                <div>
+                                                <span class="d-block">
                                                     📦
                                                     @if (drop.DeliveryTime.HasValue)
                                                     {
@@ -710,7 +710,7 @@ else
                                                     {
                                                         <span class="text-muted"> [@drop.Settlement]</span>
                                                     }
-                                                </div>
+                                                </span>
                                             }
                                         </small>
                                     }
@@ -719,7 +719,7 @@ else
                                         <small>
                                             @foreach (var drop in item.Flight.Drops)
                                             {
-                                                <div>
+                                                <span class="d-block">
                                                     @if (!string.IsNullOrEmpty(drop.Target))
                                                     {
                                                         <span>@drop.Target</span>
@@ -730,7 +730,7 @@ else
                                                     {
                                                         <span class="text-muted"> (@drop.TargetCount шт.)</span>
                                                     }
-                                                </div>
+                                                </span>
                                             }
                                         </small>
                                     }
@@ -746,12 +746,12 @@ else
                                         <small>
                                             @foreach (var drop in item.Flight.Drops)
                                             {
-                                                <div>
+                                                <span class="d-block">
                                                     <span class="badge @GetResultBadge(drop.Result)"
                                                           style="font-size:0.75rem;">
                                                         @GetResultLabel(drop.Result)
                                                     </span>
-                                                </div>
+                                                </span>
                                             }
                                         </small>
                                     }
@@ -798,7 +798,7 @@ else
                                     <small>
                                         @foreach (var drop in item.Flight.Drops)
                                         {
-                                            <div>@drop.Settlement</div>
+                                            <span class="d-block">@drop.Settlement</span>
                                         }
                                     </small>
                                 }
