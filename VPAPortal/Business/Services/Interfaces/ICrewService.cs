@@ -30,7 +30,8 @@ namespace VPAPortal.Business.Services.Interfaces
         /// isBomber/isWing визначає тип апарату.
         /// </summary>
         Task AddDroneItemAsync(int crewId, string name, int qty,
-            bool isBomber, bool isWing, string changedBy);
+                    bool isBomber, bool isWing, bool isWingAttack,
+                    string changedBy);
 
         /// <summary>Зберігає зміни запису безпілотника.</summary>
         Task SaveDroneItemAsync(int itemId, string name, int qty, string changedBy);
